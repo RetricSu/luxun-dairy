@@ -25,17 +25,17 @@ export function Timeline({ entries, viewNostrEvent }: TimelineProps) {
             <div key={entry.id} className="relative flex mb-8 last:mb-0">
               <div className="relative w-[20%] pr-6 text-right">
                 <div className="absolute top-3 right-[-5px] w-2.5 h-2.5 bg-accent-dark dark:bg-accent-dark rounded-full transform translate-x-1/2 z-10"></div>
-                <div className="text-sm text-[#5f5e56] dark:text-[#bfbfb3] font-medium mt-1 mr-3">{formatShortDate(entry.day)}</div>
+                <div className="text-sm text-[#5f5e56] dark:text-[#7fb5ae] font-medium mt-1 mr-3">{formatShortDate(entry.day)}</div>
               </div>
-              <div className="flex-1 bg-white dark:bg-[#262624] rounded-md shadow-sm border border-border-light dark:border-border-dark p-5 ml-6">
-                <div className="flex items-center pb-3 mb-4 border-b border-dashed border-border-light dark:border-border-dark text-sm text-[#8c8b85] dark:text-[#a6a69e]">
-                  <span className="text-[#6d6a5c] dark:text-[#bfbfb3] font-medium mr-4">天气: {entry.weather}</span>
-                  <span className="text-[#8c8b85] dark:text-[#a6a69e] text-xs mr-4">{formatDate(entry.created_at)}</span>
+              <div className="flex-1 bg-white dark:bg-[#1a1a1e] rounded-md shadow-sm border border-border-light dark:border-border-dark p-5 ml-6">
+                <div className="flex items-center pb-3 mb-4 border-b border-dashed border-border-light dark:border-border-dark text-sm text-[#8c8b85] dark:text-[#7fb5ae]">
+                  <span className="text-[#6d6a5c] dark:text-[#a2e2d8] font-medium mr-4">天气: {entry.weather}</span>
+                  <span className="text-[#8c8b85] dark:text-[#7fb5ae] text-xs mr-4">{formatDate(entry.created_at)}</span>
                   {entry.nostr_id && (
-                    <span className="text-[#8c8b85] dark:text-[#a6a69e] text-xs ml-auto flex items-center">
+                    <span className="text-[#8c8b85] dark:text-[#7fb5ae] text-xs ml-auto flex items-center">
                       Nostr: {shortenKey(entry.nostr_id)}
                       <button 
-                        className="bg-[#f0f0eb] dark:bg-[#2a2a28] text-[#6d6a5c] dark:text-[#bfbfb3] text-xs py-0.5 px-2 border border-border-light dark:border-border-dark rounded hover:bg-[#e8e8e3] dark:hover:bg-[#333331] ml-2"
+                        className="bg-[#f0f0eb] dark:bg-[#262630] text-[#6d6a5c] dark:text-[#a2e2d8] text-xs py-0.5 px-2 border border-border-light dark:border-border-dark rounded hover:bg-[#e8e8e3] dark:hover:bg-[#1e1e26] ml-2"
                         onClick={() => viewNostrEvent(entry.nostr_id as string)}
                       >
                         查看

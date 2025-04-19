@@ -6,7 +6,7 @@ interface DayHeaderProps {
 
 export function DayHeader({ selectedDay }: DayHeaderProps) {
   return (
-    <div className="flex items-center px-6 py-5 bg-rice-paper dark:bg-[#2a2a28]">
+    <div className="flex items-center px-6 py-5 bg-rice-paper dark:bg-[#1a1a1e]">
       <h2 className="text-xl font-medium text-[#5f5e56] dark:text-text-primary-dark tracking-wide m-0">
         {formatDayDisplay(selectedDay)}
       </h2>

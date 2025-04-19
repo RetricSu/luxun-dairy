@@ -23,7 +23,7 @@ export function DiaryForm({
         onInput={(e) => setContent(e.currentTarget.value)}
         placeholder="今天有什么想法、感受或值得记录的事情..."
         rows={15}
-        className="w-full p-4 rounded bg-[#f9f9f6] dark:bg-[#2a2a28] text-text-primary dark:text-text-primary-dark border border-border-light dark:border-border-dark leading-7 outline-none transition-all shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)] resize-none tracking-wide focus:border-[#afada1] dark:focus:border-accent-dark focus:shadow-[0_0_0_3px_rgba(175,173,161,0.1)]"
+        className="w-full p-4 rounded bg-[#f9f9f6] dark:bg-[#1e1e22] text-text-primary dark:text-text-primary-dark border border-border-light dark:border-border-dark leading-7 outline-none transition-all shadow-[inset_0_1px_3px_rgba(0,0,0,0.02)] resize-none tracking-wide focus:border-[#afada1] dark:focus:border-accent-dark focus:shadow-[0_0_0_3px_rgba(175,173,161,0.1)]"
       />
       
       {errorMessage && (
@@ -42,7 +42,7 @@ export function DiaryForm({
         />
         
         <button 
-          className="bg-[#8c8b85] dark:bg-accent-dark text-white font-medium px-6 py-2 h-10 border-0 rounded hover:bg-[#7d7c76] dark:hover:bg-[#a55e5a] transition-colors active:translate-y-px flex items-center justify-center tracking-wider disabled:bg-[#c7c7c2] disabled:cursor-not-allowed"
+          className="bg-accent dark:bg-accent-dark text-white font-medium px-6 py-2 h-10 border-0 rounded hover:bg-[#3f7971] dark:hover:bg-[#4c9b90] transition-colors active:translate-y-px flex items-center justify-center tracking-wider disabled:bg-[#c7c7c2] disabled:cursor-not-allowed"
           onClick={saveDiaryEntry} 
           disabled={!content.trim()}
         >
