@@ -24,7 +24,7 @@ export function WriteContainer({
   saveDiaryEntry
 }: WriteContainerProps) {
   return (
-    <div className="write-container">
+    <div className="bg-white dark:bg-[#262624] rounded-md shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.1)] overflow-hidden border border-border-light dark:border-border-dark">
       {dayHasEntry ? (
         <CompletedEntry selectedDay={selectedDay} />
       ) : (

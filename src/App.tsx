@@ -1,5 +1,4 @@
 import { useEffect, useState } from "preact/hooks";
-import "./App.css";
 import { DiaryEntry, ViewMode } from "./types";
 import { Header } from "./components/Header";
 import { SettingsPanel } from "./components/SettingsPanel";
@@ -108,7 +107,7 @@ function App() {
   }
 
   return (
-    <main class="main-container">
+    <main className="max-w-[900px] mx-auto p-6 bg-rice-paper/50 dark:bg-rice-paper-dark/50 min-h-screen shadow-[0_0_20px_rgba(0,0,0,0.02)] dark:shadow-[0_0_20px_rgba(0,0,0,0.1)]">
       <Header 
         selectedDay={selectedDay}
         viewMode={viewMode}
