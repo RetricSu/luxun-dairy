@@ -1,7 +1,8 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, NaiveDate, TimeZone};
 use directories::ProjectDirs;
 use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
+use rusqlite::{params, Connection, Result as SqlResult, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::{Read, Write};
@@ -11,21 +12,7 @@ use std::{collections::HashMap, sync::Arc};
 use tauri::State;
 use uuid::Uuid;
 use hex;
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct DiaryEntry {
-    id: String,
-    content: String,
-    weather: String,
-    created_at: DateTime<Utc>,
-    nostr_id: Option<String>,
-}
-
-#[derive(Default)]
-struct DiaryStore {
-    entries: Mutex<HashMap<String, DiaryEntry>>,
-    nostr_keys: Mutex<Option<Keys>>,
-}
+use once_cell::sync::Lazy;
 
 fn get_data_dir() -> PathBuf {
     let proj_dirs = ProjectDirs::from("com", "luxun", "diary")
@@ -36,6 +23,54 @@ fn get_data_dir() -> PathBuf {
     println!("Diary storage location: {}", data_dir.display());
     
     data_dir.to_path_buf()
+}
+
+fn get_db_path() -> PathBuf {
+    let data_dir = get_data_dir();
+    data_dir.join("diary.db")
+}
+
+fn setup_db() -> SqlResult<Connection> {
+    let db_path = get_db_path();
+    println!("Database path: {}", db_path.display());
+    
+    let conn = Connection::open(db_path)?;
+    
+    // Create the diary entries table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS diary_entries (
+            id TEXT PRIMARY KEY,
+            content TEXT NOT NULL,
+            weather TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            nostr_id TEXT UNIQUE,
+            day TEXT UNIQUE,
+            nostr_event TEXT
+        )",
+        [],
+    )?;
+    
+    Ok(conn)
+}
+
+static DB_CONNECTION: Lazy<Mutex<Connection>> = Lazy::new(|| {
+    let conn = setup_db().expect("Failed to set up database");
+    Mutex::new(conn)
+});
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct DiaryEntry {
+    id: String,
+    content: String,
+    weather: String,
+    created_at: DateTime<Utc>,
+    nostr_id: Option<String>,
+    day: String, // YYYY-MM-DD format
+}
+
+#[derive(Default)]
+struct DiaryStore {
+    nostr_keys: Mutex<Option<Keys>>,
 }
 
 fn get_entries_file_path() -> PathBuf {
@@ -260,8 +295,23 @@ fn save_diary_entry(
     store: State<Arc<DiaryStore>>,
     content: String,
     weather: String,
+    day: Option<String>,
 ) -> Result<DiaryEntry, String> {
     println!("Creating new diary entry with weather: {}", weather);
+    
+    // Use provided day or get current day
+    let entry_day = day.unwrap_or_else(|| Utc::now().format("%Y-%m-%d").to_string());
+    
+    // Check if an entry already exists for this day
+    match entry_exists_for_day(&entry_day) {
+        Ok(exists) if exists => {
+            return Err(format!("An entry already exists for day: {}", entry_day));
+        }
+        Err(e) => {
+            return Err(format!("Failed to check if entry exists: {}", e));
+        }
+        _ => {}
+    }
     
     // Get or create Nostr keys
     let keys = get_or_create_nostr_keys(&store)?;
@@ -271,57 +321,48 @@ fn save_diary_entry(
     // Create Nostr event
     let (nostr_id, nostr_event_json) = create_nostr_event(&keys, &content, &weather)?;
     
-    // Save the Nostr event to a file
-    if let Err(e) = save_nostr_event(&nostr_id, &nostr_event_json) {
-        println!("Warning: Failed to save Nostr event: {}", e);
-        // Continue anyway, as we can still save the diary entry
-    }
-    
     let entry = DiaryEntry {
         id: Uuid::new_v4().to_string(),
         content,
         weather,
         created_at: Utc::now(),
-        nostr_id: Some(nostr_id),
+        nostr_id: Some(nostr_id.clone()),
+        day: entry_day,
     };
     
     println!("Generated diary entry with ID: {}", entry.id);
     
-    let entry_id = entry.id.clone();
-    let mut entries = store.entries.lock().unwrap();
-    entries.insert(entry_id, entry.clone());
-    
-    match save_entries(&entries) {
-        Ok(_) => Ok(entry),
-        Err(e) => Err(e),
+    // Save entry to database
+    if let Err(e) = save_entry_to_db(&entry, &nostr_event_json) {
+        return Err(format!("Failed to save entry to database: {}", e));
     }
+    
+    Ok(entry)
 }
 
 #[tauri::command]
-fn get_diary_entries(store: State<Arc<DiaryStore>>) -> Vec<DiaryEntry> {
-    let entries = store.entries.lock().unwrap();
-    entries.values().cloned().collect()
+fn get_diary_entries(_store: State<Arc<DiaryStore>>) -> Result<Vec<DiaryEntry>, String> {
+    match load_entries_from_db() {
+        Ok(entries) => Ok(entries),
+        Err(e) => Err(format!("Failed to load entries from database: {}", e)),
+    }
 }
 
 #[tauri::command]
 fn get_nostr_event(nostr_id: String) -> Result<String, String> {
-    let file_path = get_nostr_events_dir().join(format!("{}.json", nostr_id));
-    
-    if !file_path.exists() {
-        return Err(format!("Nostr event with ID {} not found", nostr_id));
+    match get_nostr_event_from_db(&nostr_id) {
+        Ok(Some(event)) => Ok(event),
+        Ok(None) => Err(format!("Nostr event with ID {} not found", nostr_id)),
+        Err(e) => Err(format!("Failed to get Nostr event: {}", e)),
     }
-    
-    let mut file = match File::open(&file_path) {
-        Ok(file) => file,
-        Err(e) => return Err(format!("Failed to open Nostr event file: {}", e)),
-    };
-    
-    let mut contents = String::new();
-    if let Err(e) = file.read_to_string(&mut contents) {
-        return Err(format!("Failed to read Nostr event file: {}", e));
+}
+
+#[tauri::command]
+fn check_day_has_entry(day: String) -> Result<bool, String> {
+    match entry_exists_for_day(&day) {
+        Ok(exists) => Ok(exists),
+        Err(e) => Err(format!("Failed to check if day has entry: {}", e)),
     }
-    
-    Ok(contents)
 }
 
 #[tauri::command]
@@ -335,12 +376,103 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+fn save_entry_to_db(entry: &DiaryEntry, nostr_event_json: &str) -> SqlResult<()> {
+    let conn = DB_CONNECTION.lock().unwrap();
+    
+    // Check if an entry already exists for this day
+    let existing: Option<String> = conn.query_row(
+        "SELECT id FROM diary_entries WHERE day = ?1",
+        params![entry.day],
+        |row| row.get(0),
+    ).optional()?;
+    
+    if let Some(existing_id) = existing {
+        if existing_id != entry.id {
+            return Err(rusqlite::Error::InvalidParameterName(
+                format!("An entry already exists for day: {}", entry.day)
+            ));
+        }
+    }
+    
+    conn.execute(
+        "INSERT OR REPLACE INTO diary_entries (id, content, weather, created_at, nostr_id, day, nostr_event)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![
+            entry.id,
+            entry.content,
+            entry.weather,
+            entry.created_at.to_rfc3339(),
+            entry.nostr_id,
+            entry.day,
+            nostr_event_json
+        ],
+    )?;
+    
+    println!("Saved entry to database with ID: {}", entry.id);
+    Ok(())
+}
+
+fn load_entries_from_db() -> SqlResult<Vec<DiaryEntry>> {
+    let conn = DB_CONNECTION.lock().unwrap();
+    let mut stmt = conn.prepare(
+        "SELECT id, content, weather, created_at, nostr_id, day FROM diary_entries 
+         ORDER BY created_at DESC"
+    )?;
+    
+    let entries_iter = stmt.query_map([], |row| {
+        let created_at_str: String = row.get(3)?;
+        let created_at = DateTime::parse_from_rfc3339(&created_at_str)
+            .map(|dt| dt.with_timezone(&Utc))
+            .unwrap_or_else(|_| Utc::now());
+        
+        Ok(DiaryEntry {
+            id: row.get(0)?,
+            content: row.get(1)?,
+            weather: row.get(2)?,
+            created_at,
+            nostr_id: row.get(4)?,
+            day: row.get(5)?,
+        })
+    })?;
+    
+    let mut entries = Vec::new();
+    for entry_result in entries_iter {
+        entries.push(entry_result?);
+    }
+    
+    println!("Loaded {} entries from database", entries.len());
+    Ok(entries)
+}
+
+fn get_nostr_event_from_db(nostr_id: &str) -> SqlResult<Option<String>> {
+    let conn = DB_CONNECTION.lock().unwrap();
+    conn.query_row(
+        "SELECT nostr_event FROM diary_entries WHERE nostr_id = ?1",
+        params![nostr_id],
+        |row| row.get(0),
+    ).optional()
+}
+
+fn entry_exists_for_day(day: &str) -> SqlResult<bool> {
+    let conn = DB_CONNECTION.lock().unwrap();
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM diary_entries WHERE day = ?1",
+        params![day],
+        |row| row.get(0),
+    )?;
+    Ok(count > 0)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     println!("Starting Lu Xun's Diary application");
     
+    // Initialize database
+    Lazy::force(&DB_CONNECTION);
+    println!("Database initialized");
+    
+    // Initialize diary store
     let diary_store = Arc::new(DiaryStore {
-        entries: Mutex::new(load_entries()),
         nostr_keys: Mutex::new(None),
     });
 
@@ -352,7 +484,8 @@ pub fn run() {
             save_diary_entry,
             get_diary_entries,
             get_nostr_event,
-            get_nostr_public_key
+            get_nostr_public_key,
+            check_day_has_entry
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

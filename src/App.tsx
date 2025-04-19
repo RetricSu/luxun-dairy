@@ -8,21 +8,31 @@ interface DiaryEntry {
   weather: string;
   created_at: string;
   nostr_id?: string;
+  day: string; // YYYY-MM-DD format
 }
 
 function App() {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [content, setContent] = useState("");
   const [weather, setWeather] = useState("");
+  const [selectedDay, setSelectedDay] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
+  const [dayHasEntry, setDayHasEntry] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<"write" | "view">("write");
   const [selectedNostrEvent, setSelectedNostrEvent] = useState<string | null>(null);
   const [nostrEventData, setNostrEventData] = useState<string | null>(null);
   const [nostrPublicKey, setNostrPublicKey] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   useEffect(() => {
     loadEntries();
     loadNostrPublicKey();
   }, []);
+
+  useEffect(() => {
+    checkDayHasEntry(selectedDay);
+  }, [selectedDay]);
 
   async function loadNostrPublicKey() {
     try {
@@ -36,24 +46,49 @@ function App() {
   async function loadEntries() {
     try {
       const entriesData = await invoke<DiaryEntry[]>("get_diary_entries");
-      setEntries(entriesData.sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      ));
+      setEntries(entriesData);
     } catch (error) {
       console.error("Failed to load entries:", error);
     }
   }
 
+  async function checkDayHasEntry(day: string) {
+    try {
+      const hasEntry = await invoke<boolean>("check_day_has_entry", { day });
+      setDayHasEntry(hasEntry);
+      if (hasEntry) {
+        // Find the entry for this day
+        const entry = entries.find(e => e.day === day);
+        if (entry) {
+          setContent(entry.content);
+          setWeather(entry.weather);
+        }
+      } else {
+        setContent("");
+        setWeather("");
+      }
+    } catch (error) {
+      console.error("Failed to check if day has entry:", error);
+    }
+  }
+
   async function saveDiaryEntry() {
     if (!content.trim()) return;
+    setErrorMessage("");
     
     try {
-      await invoke("save_diary_entry", { content, weather });
+      await invoke<DiaryEntry>("save_diary_entry", { 
+        content, 
+        weather,
+        day: selectedDay
+      });
       setContent("");
       setWeather("");
       await loadEntries();
-    } catch (error) {
+      setDayHasEntry(true);
+    } catch (error: any) {
       console.error("Failed to save entry:", error);
+      setErrorMessage(error.toString());
     }
   }
 
@@ -94,6 +129,11 @@ function App() {
     return `${key.substring(0, 8)}...${key.substring(key.length - 8)}`;
   }
 
+  function handleDayChange(e: Event) {
+    const target = e.target as HTMLInputElement;
+    setSelectedDay(target.value);
+  }
+
   return (
     <main class="container">
       <h1>Lu Xun's Diary</h1>
@@ -125,12 +165,28 @@ function App() {
       {viewMode === "write" ? (
         <div class="write-mode">
           <div class="form-group">
+            <label htmlFor="day">Date</label>
+            <input
+              id="day"
+              type="date"
+              value={selectedDay}
+              onChange={handleDayChange}
+            />
+            {dayHasEntry && (
+              <div class="day-has-entry-warning">
+                This day already has an entry. Editing is currently disabled.
+              </div>
+            )}
+          </div>
+          
+          <div class="form-group">
             <label htmlFor="weather">Weather</label>
             <input
               id="weather"
               value={weather}
               onInput={(e) => setWeather(e.currentTarget.value)}
               placeholder="How's the weather today?"
+              disabled={dayHasEntry}
             />
           </div>
           
@@ -142,10 +198,18 @@ function App() {
               onInput={(e) => setContent(e.currentTarget.value)}
               placeholder="Write your thoughts..."
               rows={10}
+              disabled={dayHasEntry}
             />
           </div>
           
-          <button onClick={saveDiaryEntry} disabled={!content.trim()}>
+          {errorMessage && (
+            <div class="error-message">{errorMessage}</div>
+          )}
+          
+          <button 
+            onClick={saveDiaryEntry} 
+            disabled={!content.trim() || dayHasEntry}
+          >
             Save Entry
           </button>
         </div>
@@ -165,6 +229,7 @@ function App() {
                 <div key={entry.id} class="entry-card">
                   <div class="entry-header">
                     <span class="entry-date">{formatDate(entry.created_at)}</span>
+                    <span class="entry-day">{entry.day}</span>
                     <span class="entry-weather">Weather: {entry.weather}</span>
                   </div>
                   <div class="entry-content">

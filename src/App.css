@@ -291,3 +291,44 @@ button:disabled {
 .nostr-pubkey-value:hover {
   background-color: #bae6fd;
 }
+
+.day-has-entry-warning {
+  color: #b91c1c;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+.error-message {
+  color: #b91c1c;
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.entry-day {
+  font-weight: 500;
+  color: #4b5563;
+}
+
+input[type="date"] {
+  font-family: inherit;
+  padding: 0.8rem;
+  border-radius: 8px;
+  border: 1px solid #d4d4d8;
+  font-size: 1rem;
+  background-color: white;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+input[type="date"]:focus {
+  border-color: #646cff;
+}
+
+input:disabled, textarea:disabled {
+  background-color: #f4f4f5;
+  color: #71717a;
+  cursor: not-allowed;
+}
