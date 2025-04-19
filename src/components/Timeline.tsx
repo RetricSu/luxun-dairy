@@ -25,11 +25,9 @@ export function Timeline({ entries, viewNostrEvent }: TimelineProps) {
         .sort((a, b) => parseInt(b[0]) - parseInt(a[0]))
         .map(([year, yearEntries]) => (
         <div key={year} className="relative mb-12 last:mb-0">
-          <div className="relative mb-8 text-left pl-[15%] transform -translate-x-1/2 z-10 flex items-center">
-            <span className="inline-block bg-gradient-to-r from-accent-dark to-[#4e998e] dark:from-accent-dark dark:to-[#247a6d] text-white text-lg font-medium py-1.5 px-6 rounded-full shadow-sm z-10 text-center min-w-[90px]">
+          <span className="inline-block bg-gradient-to-r from-accent-dark to-[#4e998e] dark:from-accent-dark dark:to-[#247a6d] text-white text-lg font-medium py-1.5 px-6 rounded-full shadow-sm z-10 text-center min-w-[90px]">
               {year}年
             </span>
-          </div>
           {yearEntries.map((entry) => (
             <div key={entry.id} className="relative flex mb-10 last:mb-0">
               <div className="relative w-[15%] pr-6 text-right">
@@ -40,14 +38,11 @@ export function Timeline({ entries, viewNostrEvent }: TimelineProps) {
                 <div className="flex items-center pb-3 mb-4 border-b border-[#f0ede4] dark:border-[#2a2a30] text-sm text-[#8c8b85] dark:text-[#7fb5ae]">
                   <div className="flex items-center">
                     <span className="text-[#5d5a4c] dark:text-[#a2e2d8] font-medium mr-5">
-                    <span className="ml-1 text-[#7a7666] dark:text-[#8fc9c3]">
+                    <span className="ml-1 text-[#49818b] dark:text-[#49818b]">
                     {formatShortDate(entry.day)}</span>
                     </span>
                     <span className="text-[#5d5a4c] dark:text-[#a2e2d8] font-medium mr-5">
-                      <span className="ml-1 text-[#7a7666] dark:text-[#8fc9c3]">{entry.weather}</span>
-                    </span>
-                    <span className="text-[#9c9b95] dark:text-[#717b7a] text-xs mr-4">
-                      {formatDate(entry.created_at)}
+                      <span className="ml-1 text-[#718328] dark:text-[#d0e57e]">{entry.weather}</span>
                     </span>
                   </div>
                   {entry.nostr_id && (
