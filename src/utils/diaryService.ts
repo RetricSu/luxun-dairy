@@ -56,4 +56,17 @@ export async function getNostrEvent(nostrId: string): Promise<string> {
     console.error("Failed to load Nostr event:", error);
     throw error;
   }
+}
+
+export async function verifyNostrSignature(nostrId: string): Promise<boolean> {
+  if (!nostrId) {
+    throw new Error("Nostr ID cannot be empty");
+  }
+  
+  try {
+    return await invoke<boolean>("verify_nostr_signature", { nostrId });
+  } catch (error) {
+    console.error("Failed to verify Nostr signature:", error);
+    throw error;
+  }
 } 

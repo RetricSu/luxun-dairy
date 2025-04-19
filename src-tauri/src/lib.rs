@@ -1,7 +1,7 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use chrono::{DateTime, Utc};
 use directories::ProjectDirs;
-use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
+use nostr_sdk::{EventBuilder, Keys, Kind, Tag, Event};
 use rusqlite::{params, Connection, Result as SqlResult, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
@@ -408,6 +408,28 @@ fn entry_exists_for_day(day: &str) -> SqlResult<bool> {
     Ok(count > 0)
 }
 
+#[tauri::command]
+fn verify_nostr_signature(nostr_id: String) -> Result<bool, String> {
+    // Get the event JSON from the database
+    let event_json = match get_nostr_event_from_db(&nostr_id) {
+        Ok(Some(json)) => json,
+        Ok(None) => return Err(format!("Nostr event with ID {} not found", nostr_id)),
+        Err(e) => return Err(format!("Failed to get Nostr event: {}", e)),
+    };
+    
+    // Parse the event JSON
+    let event: Event = match serde_json::from_str(&event_json) {
+        Ok(event) => event,
+        Err(e) => return Err(format!("Failed to parse Nostr event: {}", e)),
+    };
+    
+    // Verify the signature
+    match event.verify() {
+        Ok(()) => Ok(true),  // If verify() returns Ok(()), the signature is valid
+        Err(e) => Err(format!("Error verifying signature: {}", e)),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     println!("Starting Lu Xun's Diary application");
@@ -430,7 +452,8 @@ pub fn run() {
             get_diary_entries,
             get_nostr_event,
             get_nostr_public_key,
-            check_day_has_entry
+            check_day_has_entry,
+            verify_nostr_signature
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

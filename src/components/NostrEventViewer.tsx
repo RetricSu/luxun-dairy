@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { shortenKey } from "../utils/helpers";
+import { verifyNostrSignature } from "../utils/diaryService";
 
 interface NostrEventViewerProps {
   selectedNostrEvent: string;
@@ -11,17 +13,53 @@ export function NostrEventViewer({
   nostrEventData,
   closeNostrEventView,
 }: NostrEventViewerProps) {
+  const [verificationResult, setVerificationResult] = useState<{status: 'idle' | 'loading' | 'success' | 'error'; message?: string}>({ status: 'idle' });
+
+  const handleVerifySignature = async () => {
+    try {
+      setVerificationResult({ status: 'loading' });
+      const isValid = await verifyNostrSignature(selectedNostrEvent);
+      setVerificationResult({ 
+        status: 'success', 
+        message: isValid ? "签名有效 ✓" : "签名无效 ✗"
+      });
+    } catch (error) {
+      setVerificationResult({ 
+        status: 'error', 
+        message: `验证失败: ${error instanceof Error ? error.message : String(error)}`
+      });
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-[#262624] rounded-md shadow-md border border-[#e6dfd3] dark:border-border-dark overflow-hidden">
       <div className="flex justify-between items-center px-6 py-4 border-b border-[#e6dfd3] dark:border-border-dark bg-[#f9f6f0] dark:bg-[#2a2a28]">
         <h3 className="m-0 text-[16px] text-[#7c6d58] dark:text-text-secondary-dark">Nostr 事件: {selectedNostrEvent.substring(0, 8)}...</h3>
-        <button 
-          className="bg-[#f0ebe2] dark:bg-[#2a2a28] text-[#7c6d58] dark:text-text-secondary-dark text-sm py-1 px-3 border border-[#d9d0c1] dark:border-border-dark rounded hover:bg-[#e6dfd3] dark:hover:bg-[#333331]" 
-          onClick={closeNostrEventView}
-        >
-          关闭
-        </button>
+        <div className="flex gap-2">
+          <button 
+            className="bg-[#f0ebe2] dark:bg-[#2a2a28] text-[#7c6d58] dark:text-text-secondary-dark text-sm py-1 px-3 border border-[#d9d0c1] dark:border-border-dark rounded hover:bg-[#e6dfd3] dark:hover:bg-[#333331]" 
+            onClick={handleVerifySignature}
+            disabled={verificationResult.status === 'loading'}
+          >
+            {verificationResult.status === 'loading' ? '验证中...' : '验证签名'}
+          </button>
+          <button 
+            className="bg-[#f0ebe2] dark:bg-[#2a2a28] text-[#7c6d58] dark:text-text-secondary-dark text-sm py-1 px-3 border border-[#d9d0c1] dark:border-border-dark rounded hover:bg-[#e6dfd3] dark:hover:bg-[#333331]" 
+            onClick={closeNostrEventView}
+          >
+            关闭
+          </button>
+        </div>
       </div>
+      {verificationResult.status !== 'idle' && verificationResult.message && (
+        <div className={`px-6 py-2 text-sm font-medium ${
+          verificationResult.status === 'loading' ? 'bg-[#f9f9d9] dark:bg-[#36362e] text-[#7c7c3a] dark:text-[#d2d28a]' :
+          verificationResult.status === 'success' && verificationResult.message.includes('有效') ? 'bg-[#e6f6e8] dark:bg-[#2e392f] text-[#3d7a45] dark:text-[#8cd996]' :
+          'bg-[#f9e6e6] dark:bg-[#3a2e2e] text-[#a33a3a] dark:text-[#eb9090]'
+        }`}>
+          {verificationResult.message}
+        </div>
+      )}
       <div className="w-full max-h-[70vh] overflow-y-auto bg-[#f8f9fa] dark:bg-[#2a2a28] p-4 rounded text-sm whitespace-pre-wrap break-words">
         {(() => {
           try {
@@ -32,6 +70,7 @@ export function NostrEventViewer({
                   <p><strong>类型:</strong> {event.kind === 30027 ? "鲁迅日记格式 (30027)" : event.kind}</p>
                   <p><strong>创建时间:</strong> {new Date(event.created_at * 1000).toLocaleString('zh-CN')}</p>
                   <p><strong>公钥:</strong> {shortenKey(event.pubkey)}</p>
+                  <p><strong>签名:</strong> <span className="font-mono text-xs">{shortenKey(event.sig)}</span></p>
                 </div>
                 
                 <div className="mb-6 pb-4 border-b border-[#e0e0e0] dark:border-border-dark">
