@@ -24,6 +24,7 @@ function App() {
   const [nostrEventData, setNostrEventData] = useState<string | null>(null);
   const [nostrPublicKey, setNostrPublicKey] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [showSettings, setShowSettings] = useState<boolean>(false);
 
   useEffect(() => {
     loadEntries();
@@ -82,8 +83,6 @@ function App() {
         weather,
         day: selectedDay
       });
-      setContent("");
-      setWeather("");
       await loadEntries();
       setDayHasEntry(true);
     } catch (error: any) {
@@ -134,115 +133,145 @@ function App() {
     setSelectedDay(target.value);
   }
 
-  return (
-    <main class="container">
-      <h1>Lu Xun's Diary</h1>
-      
-      {nostrPublicKey && (
-        <div class="nostr-info">
-          <span class="nostr-pubkey-label">Nostr Public Key:</span>
-          <span class="nostr-pubkey-value" title={nostrPublicKey}>
-            {shortenKey(nostrPublicKey)}
-          </span>
-        </div>
-      )}
-      
-      <div class="tabs">
-        <button 
-          class={viewMode === "write" ? "active" : ""} 
-          onClick={() => setViewMode("write")}
-        >
-          Write Entry
-        </button>
-        <button 
-          class={viewMode === "view" ? "active" : ""} 
-          onClick={() => setViewMode("view")}
-        >
-          View Entries
-        </button>
-      </div>
+  function formatDayDisplay(dateString: string) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString(undefined, { 
+      weekday: 'long',
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  }
 
-      {viewMode === "write" ? (
-        <div class="write-mode">
-          <div class="form-group">
-            <label htmlFor="day">Date</label>
+  const isToday = selectedDay === new Date().toISOString().split('T')[0];
+
+  return (
+    <main class="main-container">
+      <header className="app-header">
+        <h1>Lu Xun's Diary</h1>
+        
+        <div className="header-actions">
+          <button 
+            className="header-button"
+            onClick={() => setViewMode(viewMode === "write" ? "view" : "write")}
+          >
+            {viewMode === "write" ? "View Entries" : "Write Entry"}
+          </button>
+          
+          <button 
+            className="header-button"
+            onClick={() => setShowSettings(!showSettings)}
+          >
+            {showSettings ? "Hide Settings" : "Settings"}
+          </button>
+        </div>
+      </header>
+      
+      {showSettings && (
+        <div className="settings-panel">
+          {nostrPublicKey && (
+            <div className="settings-item">
+              <span className="settings-label">Nostr Public Key:</span>
+              <span className="settings-value" title={nostrPublicKey}>
+                {shortenKey(nostrPublicKey)}
+              </span>
+            </div>
+          )}
+          
+          <div className="settings-item">
+            <span className="settings-label">Selected Date:</span>
             <input
-              id="day"
               type="date"
               value={selectedDay}
               onChange={handleDayChange}
+              className="date-input"
             />
-            {dayHasEntry && (
-              <div class="day-has-entry-warning">
-                This day already has an entry. Editing is currently disabled.
+          </div>
+        </div>
+      )}
+
+      {viewMode === "write" ? (
+        <div className="write-container">
+          <div className="day-header">
+            <h2 className="day-title">{formatDayDisplay(selectedDay)}</h2>
+            {isToday && <span className="today-badge">Today</span>}
+          </div>
+          
+          {dayHasEntry ? (
+            <div className="completed-entry">
+              <div className="completion-message">
+                <span className="checkmark">✓</span>
+                <h3>Today's entry completed!</h3>
+                <p>Well done on capturing your thoughts for the day.</p>
               </div>
-            )}
-          </div>
-          
-          <div class="form-group">
-            <label htmlFor="weather">Weather</label>
-            <input
-              id="weather"
-              value={weather}
-              onInput={(e) => setWeather(e.currentTarget.value)}
-              placeholder="How's the weather today?"
-              disabled={dayHasEntry}
-            />
-          </div>
-          
-          <div class="form-group">
-            <label htmlFor="content">Diary Entry</label>
-            <textarea
-              id="content"
-              value={content}
-              onInput={(e) => setContent(e.currentTarget.value)}
-              placeholder="Write your thoughts..."
-              rows={10}
-              disabled={dayHasEntry}
-            />
-          </div>
-          
-          {errorMessage && (
-            <div class="error-message">{errorMessage}</div>
+            </div>
+          ) : (
+            <div className="entry-form">
+              <div className="form-group compact">
+                <label htmlFor="weather">Weather</label>
+                <input
+                  id="weather"
+                  value={weather}
+                  onInput={(e) => setWeather(e.currentTarget.value)}
+                  placeholder="How's the weather today?"
+                />
+              </div>
+              
+              <div className="form-group main-textarea">
+                <label htmlFor="content">Write your thoughts...</label>
+                <textarea
+                  id="content"
+                  value={content}
+                  onInput={(e) => setContent(e.currentTarget.value)}
+                  placeholder="What's on your mind today?"
+                  rows={15}
+                />
+              </div>
+              
+              {errorMessage && (
+                <div className="error-message">{errorMessage}</div>
+              )}
+              
+              <button 
+                className="save-button"
+                onClick={saveDiaryEntry} 
+                disabled={!content.trim()}
+              >
+                Save Entry
+              </button>
+            </div>
           )}
-          
-          <button 
-            onClick={saveDiaryEntry} 
-            disabled={!content.trim() || dayHasEntry}
-          >
-            Save Entry
-          </button>
         </div>
       ) : (
-        <div class="entries-list">
+        <div className="entries-list">
           {selectedNostrEvent && nostrEventData ? (
-            <div class="nostr-event-view">
-              <div class="nostr-event-header">
+            <div className="nostr-event-view">
+              <div className="nostr-event-header">
                 <h3>Nostr Event: {selectedNostrEvent.substring(0, 8)}...</h3>
-                <button class="close-button" onClick={closeNostrEventView}>Close</button>
+                <button className="close-button" onClick={closeNostrEventView}>Close</button>
               </div>
-              <pre class="nostr-event-content">{formatNostrEvent(nostrEventData)}</pre>
+              <pre className="nostr-event-content">{formatNostrEvent(nostrEventData)}</pre>
             </div>
           ) : (
             entries.length > 0 ? (
               entries.map((entry) => (
-                <div key={entry.id} class="entry-card">
-                  <div class="entry-header">
-                    <span class="entry-date">{formatDate(entry.created_at)}</span>
-                    <span class="entry-day">{entry.day}</span>
-                    <span class="entry-weather">Weather: {entry.weather}</span>
+                <div key={entry.id} className="entry-card">
+                  <div className="entry-header">
+                    <span className="entry-date">{formatDate(entry.created_at)}</span>
+                    <span className="entry-day">{entry.day}</span>
+                    <span className="entry-weather">Weather: {entry.weather}</span>
                   </div>
-                  <div class="entry-content">
+                  <div className="entry-content">
                     {entry.content.split("\n").map((line, i) => (
                       <p key={i}>{line}</p>
                     ))}
                   </div>
                   {entry.nostr_id && (
-                    <div class="entry-footer">
-                      <span class="nostr-id">
+                    <div className="entry-footer">
+                      <span className="nostr-id">
                         Nostr ID: {shortenKey(entry.nostr_id)}
                         <button 
-                          class="view-nostr-button"
+                          className="view-nostr-button"
                           onClick={() => viewNostrEvent(entry.nostr_id as string)}
                         >
                           View
@@ -253,7 +282,7 @@ function App() {
                 </div>
               ))
             ) : (
-              <p class="no-entries">No entries yet. Start writing!</p>
+              <p className="no-entries">No entries yet. Start writing!</p>
             )
           )}
         </div>
