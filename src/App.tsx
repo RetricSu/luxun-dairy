@@ -17,10 +17,21 @@ function App() {
   const [viewMode, setViewMode] = useState<"write" | "view">("write");
   const [selectedNostrEvent, setSelectedNostrEvent] = useState<string | null>(null);
   const [nostrEventData, setNostrEventData] = useState<string | null>(null);
+  const [nostrPublicKey, setNostrPublicKey] = useState<string>("");
 
   useEffect(() => {
     loadEntries();
+    loadNostrPublicKey();
   }, []);
+
+  async function loadNostrPublicKey() {
+    try {
+      const publicKey = await invoke<string>("get_nostr_public_key");
+      setNostrPublicKey(publicKey);
+    } catch (error) {
+      console.error("Failed to load Nostr public key:", error);
+    }
+  }
 
   async function loadEntries() {
     try {
@@ -78,9 +89,23 @@ function App() {
     }
   }
 
+  function shortenKey(key: string) {
+    if (!key) return '';
+    return `${key.substring(0, 8)}...${key.substring(key.length - 8)}`;
+  }
+
   return (
     <main class="container">
       <h1>Lu Xun's Diary</h1>
+      
+      {nostrPublicKey && (
+        <div class="nostr-info">
+          <span class="nostr-pubkey-label">Nostr Public Key:</span>
+          <span class="nostr-pubkey-value" title={nostrPublicKey}>
+            {shortenKey(nostrPublicKey)}
+          </span>
+        </div>
+      )}
       
       <div class="tabs">
         <button 
@@ -129,7 +154,7 @@ function App() {
           {selectedNostrEvent && nostrEventData ? (
             <div class="nostr-event-view">
               <div class="nostr-event-header">
-                <h3>Nostr Event: {selectedNostrEvent}</h3>
+                <h3>Nostr Event: {selectedNostrEvent.substring(0, 8)}...</h3>
                 <button class="close-button" onClick={closeNostrEventView}>Close</button>
               </div>
               <pre class="nostr-event-content">{formatNostrEvent(nostrEventData)}</pre>
@@ -150,7 +175,7 @@ function App() {
                   {entry.nostr_id && (
                     <div class="entry-footer">
                       <span class="nostr-id">
-                        Nostr ID: {entry.nostr_id.substring(0, 10)}...
+                        Nostr ID: {shortenKey(entry.nostr_id)}
                         <button 
                           class="view-nostr-button"
                           onClick={() => viewNostrEvent(entry.nostr_id as string)}

@@ -26,4 +26,5 @@ nostr-sdk = "0.24"
 chrono = { version = "0.4", features = ["serde"] }
 directories = "5.0"
 uuid = { version = "1.4", features = ["v4"] }
+hex = "0.4.3"
 

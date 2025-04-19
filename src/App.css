@@ -260,3 +260,34 @@ button:disabled {
     background-color: #0f0f0f69;
   }
 }
+
+.nostr-info {
+  margin-bottom: 1.5rem;
+  padding: 0.5rem;
+  background-color: #f0f9ff;
+  border: 1px solid #e0f2fe;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.nostr-pubkey-label {
+  color: #0369a1;
+  font-weight: 500;
+}
+
+.nostr-pubkey-value {
+  font-family: monospace;
+  background-color: #e0f2fe;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #bae6fd;
+}
+
+.nostr-pubkey-value:hover {
+  background-color: #bae6fd;
+}
