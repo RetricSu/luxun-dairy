@@ -30,16 +30,22 @@ fn get_data_dir() -> PathBuf {
         .expect("Failed to get project directories");
     let data_dir = proj_dirs.data_dir();
     fs::create_dir_all(data_dir).expect("Failed to create data directory");
+    
+    println!("Diary storage location: {}", data_dir.display());
+    
     data_dir.to_path_buf()
 }
 
 fn get_entries_file_path() -> PathBuf {
-    get_data_dir().join("entries.json")
+    let path = get_data_dir().join("entries.json");
+    println!("Entries file path: {}", path.display());
+    path
 }
 
 fn load_entries() -> HashMap<String, DiaryEntry> {
     let file_path = get_entries_file_path();
     if !file_path.exists() {
+        println!("No existing entries file found. Starting with empty entries.");
         return HashMap::new();
     }
 
@@ -57,8 +63,12 @@ fn load_entries() -> HashMap<String, DiaryEntry> {
         return HashMap::new();
     }
 
-    match serde_json::from_str(&contents) {
-        Ok(entries) => entries,
+    match serde_json::from_str::<HashMap<String, DiaryEntry>>(&contents) {
+        Ok(entries) => {
+            let entry_count = entries.len();
+            println!("Loaded {} diary entries from storage", entry_count);
+            entries
+        },
         Err(e) => {
             println!("Failed to parse entries file: {}", e);
             HashMap::new()
@@ -80,7 +90,10 @@ fn save_entries(entries: &HashMap<String, DiaryEntry>) -> Result<(), String> {
     };
     
     match file.write_all(json.as_bytes()) {
-        Ok(_) => Ok(()),
+        Ok(_) => {
+            println!("Successfully saved {} diary entries to storage", entries.len());
+            Ok(())
+        },
         Err(e) => Err(format!("Failed to write entries: {}", e)),
     }
 }
@@ -105,6 +118,8 @@ fn save_diary_entry(
     content: String,
     weather: String,
 ) -> Result<DiaryEntry, String> {
+    println!("Creating new diary entry with weather: {}", weather);
+    
     let (nostr_id, _nostr_event) = create_nostr_event(&content, &weather);
     
     let entry = DiaryEntry {
@@ -114,6 +129,8 @@ fn save_diary_entry(
         created_at: Utc::now(),
         nostr_id: Some(nostr_id),
     };
+    
+    println!("Generated diary entry with ID: {}", entry.id);
     
     let entry_id = entry.id.clone();
     let mut entries = store.entries.lock().unwrap();
@@ -138,6 +155,8 @@ fn greet(name: &str) -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    println!("Starting Lu Xun's Diary application");
+    
     let diary_store = Arc::new(DiaryStore {
         entries: Mutex::new(load_entries()),
     });
