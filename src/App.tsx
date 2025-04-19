@@ -207,16 +207,6 @@ function App() {
             </div>
           ) : (
             <div className="entry-form">
-              <div className="form-group compact">
-                <label htmlFor="weather">Weather</label>
-                <input
-                  id="weather"
-                  value={weather}
-                  onInput={(e) => setWeather(e.currentTarget.value)}
-                  placeholder="How's the weather today?"
-                />
-              </div>
-              
               <div className="form-group main-textarea">
                 <label htmlFor="content">Write your thoughts...</label>
                 <textarea
@@ -232,13 +222,23 @@ function App() {
                 <div className="error-message">{errorMessage}</div>
               )}
               
-              <button 
-                className="save-button"
-                onClick={saveDiaryEntry} 
-                disabled={!content.trim()}
-              >
-                Save Entry
-              </button>
+              <div className="form-actions">
+                <input
+                  id="weather"
+                  className="weather-input"
+                  value={weather}
+                  onInput={(e) => setWeather(e.currentTarget.value)}
+                  placeholder="Weather..."
+                />
+                
+                <button 
+                  className="save-button"
+                  onClick={saveDiaryEntry} 
+                  disabled={!content.trim()}
+                >
+                  Save Entry
+                </button>
+              </div>
             </div>
           )}
         </div>

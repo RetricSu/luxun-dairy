@@ -186,6 +186,23 @@
   margin-bottom: 1.5rem;
 }
 
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.weather-input {
+  flex: 0 0 auto;
+  width: 140px;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+  height: 40px;
+  border-radius: 0.375rem;
+  border: 1px solid #d1d5db;
+}
+
 label {
   display: block;
   margin-bottom: 0.5rem;
@@ -387,6 +404,15 @@ input:focus, textarea:focus {
     flex: 1;
     text-align: center;
   }
+  
+  .form-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .weather-input {
+    width: 100%;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -467,6 +493,12 @@ input:focus, textarea:focus {
   
   input:focus, textarea:focus {
     border-color: #6366f1;
+  }
+  
+  .weather-input {
+    background-color: #374151;
+    color: #e5e7eb;
+    border-color: #4b5563;
   }
   
   .save-button {
