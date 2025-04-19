@@ -15,6 +15,8 @@ function App() {
   const [content, setContent] = useState("");
   const [weather, setWeather] = useState("");
   const [viewMode, setViewMode] = useState<"write" | "view">("write");
+  const [selectedNostrEvent, setSelectedNostrEvent] = useState<string | null>(null);
+  const [nostrEventData, setNostrEventData] = useState<string | null>(null);
 
   useEffect(() => {
     loadEntries();
@@ -44,9 +46,36 @@ function App() {
     }
   }
 
+  async function viewNostrEvent(nostrId: string) {
+    if (!nostrId) return;
+    
+    try {
+      setSelectedNostrEvent(nostrId);
+      const eventData = await invoke<string>("get_nostr_event", { nostrId });
+      setNostrEventData(eventData);
+    } catch (error) {
+      console.error("Failed to load Nostr event:", error);
+      setNostrEventData(null);
+    }
+  }
+
+  function closeNostrEventView() {
+    setSelectedNostrEvent(null);
+    setNostrEventData(null);
+  }
+
   function formatDate(dateString: string) {
     const date = new Date(dateString);
     return date.toLocaleString();
+  }
+
+  function formatNostrEvent(jsonString: string) {
+    try {
+      const parsed = JSON.parse(jsonString);
+      return JSON.stringify(parsed, null, 2);
+    } catch (e) {
+      return jsonString;
+    }
   }
 
   return (
@@ -97,27 +126,45 @@ function App() {
         </div>
       ) : (
         <div class="entries-list">
-          {entries.length > 0 ? (
-            entries.map((entry) => (
-              <div key={entry.id} class="entry-card">
-                <div class="entry-header">
-                  <span class="entry-date">{formatDate(entry.created_at)}</span>
-                  <span class="entry-weather">Weather: {entry.weather}</span>
-                </div>
-                <div class="entry-content">
-                  {entry.content.split("\n").map((line, i) => (
-                    <p key={i}>{line}</p>
-                  ))}
-                </div>
-                {entry.nostr_id && (
-                  <div class="entry-footer">
-                    <small>Nostr ID: {entry.nostr_id.substring(0, 10)}...</small>
-                  </div>
-                )}
+          {selectedNostrEvent && nostrEventData ? (
+            <div class="nostr-event-view">
+              <div class="nostr-event-header">
+                <h3>Nostr Event: {selectedNostrEvent}</h3>
+                <button class="close-button" onClick={closeNostrEventView}>Close</button>
               </div>
-            ))
+              <pre class="nostr-event-content">{formatNostrEvent(nostrEventData)}</pre>
+            </div>
           ) : (
-            <p class="no-entries">No entries yet. Start writing!</p>
+            entries.length > 0 ? (
+              entries.map((entry) => (
+                <div key={entry.id} class="entry-card">
+                  <div class="entry-header">
+                    <span class="entry-date">{formatDate(entry.created_at)}</span>
+                    <span class="entry-weather">Weather: {entry.weather}</span>
+                  </div>
+                  <div class="entry-content">
+                    {entry.content.split("\n").map((line, i) => (
+                      <p key={i}>{line}</p>
+                    ))}
+                  </div>
+                  {entry.nostr_id && (
+                    <div class="entry-footer">
+                      <span class="nostr-id">
+                        Nostr ID: {entry.nostr_id.substring(0, 10)}...
+                        <button 
+                          class="view-nostr-button"
+                          onClick={() => viewNostrEvent(entry.nostr_id as string)}
+                        >
+                          View
+                        </button>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p class="no-entries">No entries yet. Start writing!</p>
+            )
           )}
         </div>
       )}

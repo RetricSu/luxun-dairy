@@ -42,6 +42,30 @@ fn get_entries_file_path() -> PathBuf {
     path
 }
 
+fn get_nostr_events_dir() -> PathBuf {
+    let dir = get_data_dir().join("nostr_events");
+    fs::create_dir_all(&dir).expect("Failed to create nostr events directory");
+    println!("Nostr events directory: {}", dir.display());
+    dir
+}
+
+fn save_nostr_event(event_id: &str, event_json: &str) -> Result<(), String> {
+    let file_path = get_nostr_events_dir().join(format!("{}.json", event_id));
+    
+    let mut file = match File::create(&file_path) {
+        Ok(file) => file,
+        Err(e) => return Err(format!("Failed to create nostr event file: {}", e)),
+    };
+    
+    match file.write_all(event_json.as_bytes()) {
+        Ok(_) => {
+            println!("Saved Nostr event to: {}", file_path.display());
+            Ok(())
+        },
+        Err(e) => Err(format!("Failed to write nostr event: {}", e)),
+    }
+}
+
 fn load_entries() -> HashMap<String, DiaryEntry> {
     let file_path = get_entries_file_path();
     if !file_path.exists() {
@@ -120,7 +144,13 @@ fn save_diary_entry(
 ) -> Result<DiaryEntry, String> {
     println!("Creating new diary entry with weather: {}", weather);
     
-    let (nostr_id, _nostr_event) = create_nostr_event(&content, &weather);
+    let (nostr_id, nostr_event_json) = create_nostr_event(&content, &weather);
+    
+    // Save the Nostr event to a file
+    if let Err(e) = save_nostr_event(&nostr_id, &nostr_event_json) {
+        println!("Warning: Failed to save Nostr event: {}", e);
+        // Continue anyway, as we can still save the diary entry
+    }
     
     let entry = DiaryEntry {
         id: Uuid::new_v4().to_string(),
@@ -149,6 +179,27 @@ fn get_diary_entries(store: State<Arc<DiaryStore>>) -> Vec<DiaryEntry> {
 }
 
 #[tauri::command]
+fn get_nostr_event(nostr_id: String) -> Result<String, String> {
+    let file_path = get_nostr_events_dir().join(format!("{}.json", nostr_id));
+    
+    if !file_path.exists() {
+        return Err(format!("Nostr event with ID {} not found", nostr_id));
+    }
+    
+    let mut file = match File::open(&file_path) {
+        Ok(file) => file,
+        Err(e) => return Err(format!("Failed to open Nostr event file: {}", e)),
+    };
+    
+    let mut contents = String::new();
+    if let Err(e) = file.read_to_string(&mut contents) {
+        return Err(format!("Failed to read Nostr event file: {}", e));
+    }
+    
+    Ok(contents)
+}
+
+#[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
@@ -167,7 +218,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             save_diary_entry,
-            get_diary_entries
+            get_diary_entries,
+            get_nostr_event
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
