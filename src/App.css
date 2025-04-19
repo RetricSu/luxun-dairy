@@ -196,7 +196,7 @@
 }
 
 .entry-form {
-  padding: 1.75rem;
+  padding: 0rem;
 }
 
 .form-group {
@@ -222,11 +222,10 @@
   flex: 0 0 auto;
   width: 140px;
   font-size: 0.875rem;
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0.25rem;
   height: 40px;
   border: none;
   border-bottom: 1px solid #e6e6e0;
-  background-color: #f9f9f6;
   box-shadow: none;
   transition: border-color 0.2s;
 }

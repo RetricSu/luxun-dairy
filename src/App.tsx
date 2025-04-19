@@ -206,31 +206,30 @@ function App() {
 
       {viewMode === "write" ? (
         <div className="write-container">
-          <div className="day-header">
+          {!dayHasEntry && <div className="day-header">
             <h2 className="day-title">{formatDayDisplay(selectedDay)}</h2>
             {isToday && <span className="today-badge">今天</span>}
-          </div>
+          </div>}
+          
           
           {dayHasEntry ? (
             <div className="completed-entry">
               <div className="completion-message">
                 <span className="checkmark">✓</span>
                 <h3>今日日记已完成！</h3>
+                <h3 className="day-title">{formatDayDisplay(selectedDay)}</h3>
                 <p>您已记录下今天的思绪与感悟。</p>
               </div>
             </div>
           ) : (
             <div className="entry-form">
-              <div className="form-group main-textarea">
-                <label htmlFor="content">记录今日点滴...</label>
-                <textarea
+              <textarea
                   id="content"
                   value={content}
                   onInput={(e) => setContent(e.currentTarget.value)}
                   placeholder="今天有什么想法、感受或值得记录的事情..."
                   rows={15}
                 />
-              </div>
               
               {errorMessage && (
                 <div className="error-message">{errorMessage}</div>
