@@ -186,11 +186,19 @@ fn save_nostr_keys(keys: &Keys) -> Result<(), String> {
     }
 }
 
-fn create_nostr_event(keys: &Keys, content: &str, weather: &str) -> Result<(String, String), String> {
+fn create_nostr_event(keys: &Keys, content: &str, weather: &str, day: &str) -> Result<(String, String), String> {
+    // Create tags
+    let d_tag = Tag::parse(vec!["d".to_string(), day.to_string()])
+        .map_err(|e| format!("Failed to create d tag: {}", e))?;
+    
+    let weather_tag = Tag::parse(vec!["weather".to_string(), weather.to_string()])
+        .map_err(|e| format!("Failed to create weather tag: {}", e))?;
+    
+    // Use kind 30027 for diary entries
     let event = EventBuilder::new(
-        Kind::TextNote,
-        format!("Diary Entry\nWeather: {}\n\n{}", weather, content),
-        &[Tag::Identifier("diary".to_string())],
+        Kind::from(30027), // Using 30027 as requested
+        content, // Content only contains the diary text
+        &[d_tag, weather_tag],
     )
     .to_event(keys)
     .map_err(|e| format!("Failed to create Nostr event: {}", e))?;
@@ -256,7 +264,7 @@ fn save_diary_entry(
     println!("Using Nostr public key: {}", pubkey_hex);
     
     // Create Nostr event
-    let (nostr_id, nostr_event_json) = create_nostr_event(&keys, &content, &weather)?;
+    let (nostr_id, nostr_event_json) = create_nostr_event(&keys, &content, &weather, &entry_day)?;
     
     let entry = DiaryEntry {
         id: Uuid::new_v4().to_string(),
