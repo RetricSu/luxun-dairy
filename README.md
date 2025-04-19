@@ -1,6 +1,6 @@
 # 鲁迅日记 (Lu Xun's Diary)
 
-一个基于 Tauri、Preact 和 TypeScript 的桌面应用，用于记录和管理日常思考与随笔。
+一个基于 Tauri、Preact 和 TypeScript 的桌面应用，用于记录每天的日记。
 
 ![鲁迅日记](./docs/screenshot.png)
 

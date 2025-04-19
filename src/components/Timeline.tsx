@@ -1,5 +1,5 @@
 import { DiaryEntry } from "../types";
-import { formatDate, formatShortDate, groupEntriesByYear, shortenKey } from "../utils/helpers";
+import { formatShortDate, groupEntriesByYear, shortenKey } from "../utils/helpers";
 
 interface TimelineProps {
   entries: DiaryEntry[];

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState } from "preact/hooks";
 import { shortenKey } from "../utils/helpers";
 import { verifyNostrSignature } from "../utils/diaryService";
 
