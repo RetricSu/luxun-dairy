@@ -111,7 +111,9 @@ function App() {
 
   function formatDate(dateString: string) {
     const date = new Date(dateString);
-    return date.toLocaleString();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
   }
 
   function formatNostrEvent(jsonString: string) {
@@ -135,12 +137,24 @@ function App() {
 
   function formatDayDisplay(dateString: string) {
     const date = new Date(dateString);
-    return date.toLocaleDateString(undefined, { 
-      weekday: 'long',
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+    
+    // 中文星期几
+    const weekdayNames = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+    const weekday = weekdayNames[date.getDay()];
+    
+    // 中文日期格式：年月日
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    
+    return `${year}年${month}月${day}日 ${weekday}`;
+  }
+
+  function formatShortDate(dateString: string) {
+    const date = new Date(dateString);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${month}月${day}日`;
   }
 
   const isToday = selectedDay === new Date().toISOString().split('T')[0];
@@ -171,7 +185,7 @@ function App() {
         <div className="settings-panel">
           {nostrPublicKey && (
             <div className="settings-item">
-              <span className="settings-label">Nostr Public Key:</span>
+              <span className="settings-label">Nostr 公钥:</span>
               <span className="settings-value" title={nostrPublicKey}>
                 {shortenKey(nostrPublicKey)}
               </span>
@@ -194,7 +208,7 @@ function App() {
         <div className="write-container">
           <div className="day-header">
             <h2 className="day-title">{formatDayDisplay(selectedDay)}</h2>
-            {isToday && <span className="today-badge">Today</span>}
+            {isToday && <span className="today-badge">今天</span>}
           </div>
           
           {dayHasEntry ? (
@@ -208,12 +222,12 @@ function App() {
           ) : (
             <div className="entry-form">
               <div className="form-group main-textarea">
-                <label htmlFor="content">写下您的思绪...</label>
+                <label htmlFor="content">记录今日点滴...</label>
                 <textarea
                   id="content"
                   value={content}
                   onInput={(e) => setContent(e.currentTarget.value)}
-                  placeholder="今天有什么想法..."
+                  placeholder="今天有什么想法、感受或值得记录的事情..."
                   rows={15}
                 />
               </div>
@@ -228,7 +242,7 @@ function App() {
                   className="weather-input"
                   value={weather}
                   onInput={(e) => setWeather(e.currentTarget.value)}
-                  placeholder="天气..."
+                  placeholder="今日天气..."
                 />
                 
                 <button 
@@ -236,7 +250,7 @@ function App() {
                   onClick={saveDiaryEntry} 
                   disabled={!content.trim()}
                 >
-                  保存日记
+                  落笔成文
                 </button>
               </div>
             </div>
@@ -247,7 +261,7 @@ function App() {
           {selectedNostrEvent && nostrEventData ? (
             <div className="nostr-event-view">
               <div className="nostr-event-header">
-                <h3>Nostr Event: {selectedNostrEvent.substring(0, 8)}...</h3>
+                <h3>Nostr 事件: {selectedNostrEvent.substring(0, 8)}...</h3>
                 <button className="close-button" onClick={closeNostrEventView}>关闭</button>
               </div>
               <pre className="nostr-event-content">{formatNostrEvent(nostrEventData)}</pre>
@@ -259,22 +273,15 @@ function App() {
                 <div key={entry.id} className="timeline-entry">
                   <div className="timeline-marker">
                     <div className="timeline-dot"></div>
-                    <div className="timeline-date">{entry.day}</div>
+                    <div className="timeline-date">{formatShortDate(entry.day)}</div>
                   </div>
                   <div className="entry-card">
                     <div className="entry-header">
                       <span className="entry-weather">天气: {entry.weather}</span>
-                      <span className="entry-time">{formatDate(entry.created_at).split(' ')[1]}</span>
-                    </div>
-                    <div className="entry-content">
-                      {entry.content.split("\n").map((line, i) => (
-                        <p key={i}>{line}</p>
-                      ))}
-                    </div>
-                    {entry.nostr_id && (
-                      <div className="entry-footer">
-                        <span className="nostr-id">
-                          Nostr ID: {shortenKey(entry.nostr_id)}
+                      <span className="entry-time">{formatDate(entry.created_at)}</span>
+                      {entry.nostr_id && (
+                        <span className="entry-nostr-id">
+                          Nostr: {shortenKey(entry.nostr_id)}
                           <button 
                             className="view-nostr-button"
                             onClick={() => viewNostrEvent(entry.nostr_id as string)}
@@ -282,8 +289,13 @@ function App() {
                             查看
                           </button>
                         </span>
-                      </div>
-                    )}
+                      )}
+                    </div>
+                    <div className="entry-content">
+                      {entry.content.split("\n").map((line, i) => (
+                        <p key={i}>{line}</p>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ))}
