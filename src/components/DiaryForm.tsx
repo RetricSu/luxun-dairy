@@ -22,7 +22,7 @@ export function DiaryForm({
           id="content"
           value={content}
           onInput={(e) => setContent(e.currentTarget.value)}
-          placeholder="记录今天所做之小事大事，切记不要记录所思所想，一年后你会发现这些想法都没什么意义。只有 action 才能留下意义..."
+          placeholder="只记录今天所做之小事大事，不记录任何所思所想，这是鲁迅日记 App 的推荐写法。"
           rows={6}
           className="w-full p-6 bg-transparent text-[#2c2c2a] dark:text-[#e9e9e7] leading-7 outline-none transition-all resize-none tracking-wide border-none focus:ring-0"
         />

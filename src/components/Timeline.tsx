@@ -25,7 +25,7 @@ export function Timeline({ entries, viewNostrEvent }: TimelineProps) {
         .sort((a, b) => parseInt(b[0]) - parseInt(a[0]))
         .map(([year, yearEntries]) => (
         <div key={year} className="relative mb-10 last:mb-0">
-          <span className="inline-block bg-gradient-to-r from-accent-dark to-[#4e998e] dark:from-accent-dark dark:to-[#247a6d] text-white text-lg font-medium py-1 px-5 rounded-full shadow-sm z-10 text-center min-w-[80px]">
+          <span className="inline-block bg-gradient-to-r from-accent-dark to-[#4e998e] dark:from-accent-dark dark:to-[#247a6d] text-white text-lg font-medium py-1 px-5 rounded shadow-sm z-10 text-center min-w-[80px]">
               {year}年
             </span>
           {yearEntries.map((entry) => (

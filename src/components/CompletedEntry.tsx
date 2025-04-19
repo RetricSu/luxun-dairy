@@ -12,9 +12,8 @@ export function CompletedEntry({ selectedDay }: CompletedEntryProps) {
           <polyline points="20 6 9 17 4 12"></polyline>
         </svg>
       </div>
-      <h3 className="m-0 mb-4 text-2xl text-[#3c7d73] dark:text-[#a2e2d8] font-medium">今日日记已完成！</h3>
-      <h3 className="text-xl font-medium text-[#5d5a4c] dark:text-[#e9e9e7] tracking-wide m-0 mb-4">{formatDayDisplay(selectedDay)}</h3>
-      <p className="text-[#6d7a75] dark:text-[#a6a69e] text-lg m-0 leading-relaxed max-w-lg mx-auto">您已记录下今天的思绪与感悟。</p>
+      <h3 className="m-0 mb-4 text-2xl text-[#3c7d73] dark:text-[#a2e2d8] font-medium">已完成</h3>
+      <p className="text-[#6d7a75] dark:text-[#a6a69e] text-lg m-0 leading-relaxed max-w-lg mx-auto">您已记录 {formatDayDisplay(selectedDay)} 之事。</p>
     </div>
   );
 } 
