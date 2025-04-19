@@ -1,5 +1,4 @@
 import { CompletedEntry } from "./CompletedEntry";
-import { DayHeader } from "./DayHeader";
 import { DiaryForm } from "./DiaryForm";
 
 interface WriteContainerProps {
