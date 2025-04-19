@@ -331,7 +331,9 @@ function App() {
       ) : entries.length > 0 ? (
         <div className="timeline-container">
           <div className="timeline-line"></div>
-          {Object.entries(groupEntriesByYear(entries)).map(([year, yearEntries]) => (
+          {Object.entries(groupEntriesByYear(entries))
+            .sort((a, b) => parseInt(b[0]) - parseInt(a[0]))  // 按年份倒序排列
+            .map(([year, yearEntries]) => (
             <div key={year} className="timeline-year-group">
               <span className="timeline-year">{year}年</span>
               {yearEntries.map((entry) => (
