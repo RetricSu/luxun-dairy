@@ -1,5 +1,5 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-use chrono::{DateTime, Utc, NaiveDate, TimeZone};
+use chrono::{DateTime, Utc};
 use directories::ProjectDirs;
 use nostr_sdk::{EventBuilder, Keys, Kind, Tag};
 use rusqlite::{params, Connection, Result as SqlResult, OptionalExtension};
@@ -8,7 +8,7 @@ use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::Mutex;
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 use tauri::State;
 use uuid::Uuid;
 use hex;
@@ -17,17 +17,20 @@ use once_cell::sync::Lazy;
 fn get_data_dir() -> PathBuf {
     let proj_dirs = ProjectDirs::from("com", "luxun", "diary")
         .expect("Failed to get project directories");
+    
     let data_dir = proj_dirs.data_dir();
     fs::create_dir_all(data_dir).expect("Failed to create data directory");
-    
-    println!("Diary storage location: {}", data_dir.display());
-    
+    println!("Data directory: {}", data_dir.display());
     data_dir.to_path_buf()
 }
 
 fn get_db_path() -> PathBuf {
     let data_dir = get_data_dir();
     data_dir.join("diary.db")
+}
+
+fn get_nostr_keys_file_path() -> PathBuf {
+    get_data_dir().join("nostr_keys.json")
 }
 
 fn setup_db() -> SqlResult<Connection> {
@@ -71,16 +74,6 @@ pub struct DiaryEntry {
 #[derive(Default)]
 struct DiaryStore {
     nostr_keys: Mutex<Option<Keys>>,
-}
-
-fn get_entries_file_path() -> PathBuf {
-    let path = get_data_dir().join("entries.json");
-    println!("Entries file path: {}", path.display());
-    path
-}
-
-fn get_nostr_keys_file_path() -> PathBuf {
-    get_data_dir().join("nostr_keys.json")
 }
 
 fn get_nostr_events_dir() -> PathBuf {
@@ -190,62 +183,6 @@ fn save_nostr_keys(keys: &Keys) -> Result<(), String> {
             Ok(())
         },
         Err(e) => Err(format!("Failed to write nostr keys: {}", e)),
-    }
-}
-
-fn load_entries() -> HashMap<String, DiaryEntry> {
-    let file_path = get_entries_file_path();
-    if !file_path.exists() {
-        println!("No existing entries file found. Starting with empty entries.");
-        return HashMap::new();
-    }
-
-    let mut file = match File::open(&file_path) {
-        Ok(file) => file,
-        Err(e) => {
-            println!("Failed to open entries file: {}", e);
-            return HashMap::new();
-        }
-    };
-    
-    let mut contents = String::new();
-    if let Err(e) = file.read_to_string(&mut contents) {
-        println!("Failed to read entries file: {}", e);
-        return HashMap::new();
-    }
-
-    match serde_json::from_str::<HashMap<String, DiaryEntry>>(&contents) {
-        Ok(entries) => {
-            let entry_count = entries.len();
-            println!("Loaded {} diary entries from storage", entry_count);
-            entries
-        },
-        Err(e) => {
-            println!("Failed to parse entries file: {}", e);
-            HashMap::new()
-        }
-    }
-}
-
-fn save_entries(entries: &HashMap<String, DiaryEntry>) -> Result<(), String> {
-    let file_path = get_entries_file_path();
-    
-    let json = match serde_json::to_string_pretty(entries) {
-        Ok(json) => json,
-        Err(e) => return Err(format!("Failed to serialize entries: {}", e)),
-    };
-    
-    let mut file = match File::create(&file_path) {
-        Ok(file) => file,
-        Err(e) => return Err(format!("Failed to create entries file: {}", e)),
-    };
-    
-    match file.write_all(json.as_bytes()) {
-        Ok(_) => {
-            println!("Successfully saved {} diary entries to storage", entries.len());
-            Ok(())
-        },
-        Err(e) => Err(format!("Failed to write entries: {}", e)),
     }
 }
 
