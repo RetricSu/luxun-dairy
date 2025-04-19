@@ -107,7 +107,7 @@ function App() {
   }
 
   return (
-    <main className="max-w-[900px] mx-auto p-6 bg-rice-paper/50 dark:bg-rice-paper-dark/50 min-h-screen shadow-[0_0_20px_rgba(0,0,0,0.02)] dark:shadow-[0_0_20px_rgba(0,0,0,0.1)]">
+    <main className="max-w-4xl mx-auto py-8 px-6 sm:px-10 min-h-screen bg-[#faf9f6] dark:bg-[#121214]">
       <Header 
         selectedDay={selectedDay}
         viewMode={viewMode}
@@ -124,29 +124,31 @@ function App() {
         />
       )}
 
-      {viewMode === "write" ? (
-        <WriteContainer
-          dayHasEntry={dayHasEntry}
-          selectedDay={selectedDay}
-          content={content}
-          setContent={setContent}
-          weather={weather}
-          setWeather={setWeather}
-          errorMessage={errorMessage}
-          saveDiaryEntry={saveDiaryEntry}
-        />
-      ) : selectedNostrEvent && nostrEventData ? (
-        <NostrEventViewer
-          selectedNostrEvent={selectedNostrEvent}
-          nostrEventData={nostrEventData}
-          closeNostrEventView={closeNostrEventView}
-        />
-      ) : (
-        <Timeline 
-          entries={entries}
-          viewNostrEvent={viewNostrEvent}
-        />
-      )}
+      <div className="mt-8">
+        {viewMode === "write" ? (
+          <WriteContainer
+            dayHasEntry={dayHasEntry}
+            selectedDay={selectedDay}
+            content={content}
+            setContent={setContent}
+            weather={weather}
+            setWeather={setWeather}
+            errorMessage={errorMessage}
+            saveDiaryEntry={saveDiaryEntry}
+          />
+        ) : selectedNostrEvent && nostrEventData ? (
+          <NostrEventViewer
+            selectedNostrEvent={selectedNostrEvent}
+            nostrEventData={nostrEventData}
+            closeNostrEventView={closeNostrEventView}
+          />
+        ) : (
+          <Timeline 
+            entries={entries}
+            viewNostrEvent={viewNostrEvent}
+          />
+        )}
+      </div>
     </main>
   );
 }

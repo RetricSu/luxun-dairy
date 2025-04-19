@@ -6,12 +6,12 @@ interface DayHeaderProps {
 
 export function DayHeader({ selectedDay }: DayHeaderProps) {
   return (
-    <div className="flex items-center px-6 py-5 bg-rice-paper dark:bg-[#1a1a1e]">
-      <h2 className="text-xl font-medium text-[#5f5e56] dark:text-text-primary-dark tracking-wide m-0">
+    <div className="flex items-center">
+      <h2 className="font-medium text-[#3c3b33] dark:text-[#e9e9e7] tracking-wide m-0">
         {formatDayDisplay(selectedDay)}
       </h2>
       {isToday(selectedDay) && (
-        <span className="ml-3 bg-accent dark:bg-accent-dark dark:opacity-85 text-white text-xs font-medium px-2 py-1 rounded">
+        <span className="ml-3 bg-gradient-to-r from-[#49b3a1] to-[#3a9e8d] dark:from-[#43a595] dark:to-[#389384] text-white text-xs font-medium px-3 py-1 rounded-full shadow-sm">
           今天
         </span>
       )}

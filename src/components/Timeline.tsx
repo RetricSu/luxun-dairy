@@ -8,34 +8,53 @@ interface TimelineProps {
 
 export function Timeline({ entries, viewNostrEvent }: TimelineProps) {
   if (entries.length === 0) {
-    return <p className="text-center py-12 px-8 text-[#8c7c67] dark:text-[#a6a69e] italic bg-[#f9f6f0] dark:bg-[#2a2a28] rounded-md border border-dashed border-[#d9d0c1] dark:border-border-dark">暂无日记。开始写下您的第一篇日记吧！</p>;
+    return (
+      <div className="flex items-center justify-center py-16">
+        <p className="text-center py-10 px-8 text-[#8c7c67] dark:text-[#a6a69e] italic bg-[#f9f6f0] dark:bg-[#2a2a28] rounded-lg border border-dashed border-[#d9d0c1] dark:border-border-dark w-full max-w-2xl">
+          暂无日记。开始写下您的第一篇日记吧！
+        </p>
+      </div>
+    );
   }
 
   return (
-    <div className="relative py-8">
-      <div className="absolute top-0 bottom-0 left-[20%] w-px bg-[#c0bfb8] dark:bg-[#444442] transform -translate-x-1/2"></div>
+    <div className="relative py-10">
+      <div className="absolute top-0 bottom-0 left-[15%] w-[2px] bg-gradient-to-b from-[#d8d3c5] via-[#c0bfb8] to-[#d8d3c5] dark:from-[#444442] dark:via-[#555553] dark:to-[#444442] transform -translate-x-1/2"></div>
+      
       {Object.entries(groupEntriesByYear(entries))
-        .sort((a, b) => parseInt(b[0]) - parseInt(a[0]))  // 按年份倒序排列
+        .sort((a, b) => parseInt(b[0]) - parseInt(a[0]))
         .map(([year, yearEntries]) => (
-        <div key={year} className="relative mb-10 last:mb-0">
-          <div className="relative mb-8 text-left pl-[20%] transform -translate-x-1/2 z-10 flex items-center">
-            <span className="inline-block bg-accent-dark dark:bg-accent-dark dark:opacity-95 text-white text-lg font-semibold py-1.5 px-5 rounded-3xl shadow-md z-10 text-center min-w-[80px]">{year}年</span>
+        <div key={year} className="relative mb-12 last:mb-0">
+          <div className="relative mb-8 text-left pl-[15%] transform -translate-x-1/2 z-10 flex items-center">
+            <span className="inline-block bg-gradient-to-r from-accent-dark to-[#4e998e] dark:from-accent-dark dark:to-[#247a6d] text-white text-lg font-medium py-1.5 px-6 rounded-full shadow-sm z-10 text-center min-w-[90px]">
+              {year}年
+            </span>
           </div>
           {yearEntries.map((entry) => (
-            <div key={entry.id} className="relative flex mb-8 last:mb-0">
-              <div className="relative w-[20%] pr-6 text-right">
-                <div className="absolute top-3 right-[-5px] w-2.5 h-2.5 bg-accent-dark dark:bg-accent-dark rounded-full transform translate-x-1/2 z-10"></div>
-                <div className="text-sm text-[#5f5e56] dark:text-[#7fb5ae] font-medium mt-1 mr-3">{formatShortDate(entry.day)}</div>
+            <div key={entry.id} className="relative flex mb-10 last:mb-0">
+              <div className="relative w-[15%] pr-6 text-right">
+                <div className="absolute top-3 right-[-6px] w-3 h-3 bg-gradient-to-r from-[#49b3a1] to-[#3a9e8d] dark:from-[#43a595] dark:to-[#389384] rounded-full transform translate-x-1/2 z-10 shadow-sm"></div>
+                
               </div>
-              <div className="flex-1 bg-white dark:bg-[#1a1a1e] rounded-md shadow-sm border border-border-light dark:border-border-dark p-5 ml-6">
-                <div className="flex items-center pb-3 mb-4 border-b border-dashed border-border-light dark:border-border-dark text-sm text-[#8c8b85] dark:text-[#7fb5ae]">
-                  <span className="text-[#6d6a5c] dark:text-[#a2e2d8] font-medium mr-4">天气: {entry.weather}</span>
-                  <span className="text-[#8c8b85] dark:text-[#7fb5ae] text-xs mr-4">{formatDate(entry.created_at)}</span>
+              <div className="flex-1 bg-white dark:bg-[#1a1a1e] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 border border-[#e9e4d9] dark:border-[#2c2c32] p-6 ml-6">
+                <div className="flex items-center pb-3 mb-4 border-b border-[#f0ede4] dark:border-[#2a2a30] text-sm text-[#8c8b85] dark:text-[#7fb5ae]">
+                  <div className="flex items-center">
+                    <span className="text-[#5d5a4c] dark:text-[#a2e2d8] font-medium mr-5">
+                    <span className="ml-1 text-[#7a7666] dark:text-[#8fc9c3]">
+                    {formatShortDate(entry.day)}</span>
+                    </span>
+                    <span className="text-[#5d5a4c] dark:text-[#a2e2d8] font-medium mr-5">
+                      <span className="ml-1 text-[#7a7666] dark:text-[#8fc9c3]">{entry.weather}</span>
+                    </span>
+                    <span className="text-[#9c9b95] dark:text-[#717b7a] text-xs mr-4">
+                      {formatDate(entry.created_at)}
+                    </span>
+                  </div>
                   {entry.nostr_id && (
-                    <span className="text-[#8c8b85] dark:text-[#7fb5ae] text-xs ml-auto flex items-center">
+                    <span className="text-[#9c9b95] dark:text-[#717b7a] text-xs ml-auto flex items-center">
                       Nostr: {shortenKey(entry.nostr_id)}
                       <button 
-                        className="bg-[#f0f0eb] dark:bg-[#262630] text-[#6d6a5c] dark:text-[#a2e2d8] text-xs py-0.5 px-2 border border-border-light dark:border-border-dark rounded hover:bg-[#e8e8e3] dark:hover:bg-[#1e1e26] ml-2"
+                        className="ml-2 bg-[#f7f5f0] dark:bg-[#262630] text-[#6d6a5c] dark:text-[#a2e2d8] text-xs py-1 px-3 border border-[#e6e1d5] dark:border-[#323237] rounded-full hover:bg-[#f0ede6] dark:hover:bg-[#2a2a32] transition-colors"
                         onClick={() => viewNostrEvent(entry.nostr_id as string)}
                       >
                         查看
@@ -43,9 +62,9 @@ export function Timeline({ entries, viewNostrEvent }: TimelineProps) {
                     </span>
                   )}
                 </div>
-                <div className="text-text-primary dark:text-text-primary-dark leading-7">
+                <div className="text-[#2c2c2a] dark:text-[#e9e9e7] leading-7 font-normal">
                   {entry.content.split("\n").map((line, i) => (
-                    <p key={i}>{line}</p>
+                    <p key={i} className="mb-2 last:mb-0">{line}</p>
                   ))}
                 </div>
               </div>

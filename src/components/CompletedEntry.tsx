@@ -6,13 +6,15 @@ interface CompletedEntryProps {
 
 export function CompletedEntry({ selectedDay }: CompletedEntryProps) {
   return (
-    <div className="py-10 px-8 text-center">
-      <div className="text-center mb-4">
-        <span className="inline-block bg-accent dark:bg-accent-dark text-white w-14 h-14 leading-[3.5rem] text-2xl rounded-full mb-6 dark:opacity-95">✓</span>
-        <h3 className="m-0 mb-3 text-2xl text-[#4a8c82] dark:text-text-primary-dark font-medium">今日日记已完成！</h3>
-        <h3 className="text-xl font-medium text-[#5f5e56] dark:text-text-primary-dark tracking-wide m-0 mb-3">{formatDayDisplay(selectedDay)}</h3>
-        <p className="text-[#6d7a75] dark:text-text-secondary-dark text-lg m-0">您已记录下今天的思绪与感悟。</p>
+    <div className="py-14 text-center bg-white dark:bg-[#222226] rounded-lg border border-[#e9e4d9] dark:border-[#2c2c32] shadow-sm">
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-[#49b3a1] to-[#3a9e8d] dark:from-[#43a595] dark:to-[#389384] text-white text-2xl shadow-sm mb-8">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
       </div>
+      <h3 className="m-0 mb-4 text-2xl text-[#3c7d73] dark:text-[#a2e2d8] font-medium">今日日记已完成！</h3>
+      <h3 className="text-xl font-medium text-[#5d5a4c] dark:text-[#e9e9e7] tracking-wide m-0 mb-4">{formatDayDisplay(selectedDay)}</h3>
+      <p className="text-[#6d7a75] dark:text-[#a6a69e] text-lg m-0 leading-relaxed max-w-lg mx-auto">您已记录下今天的思绪与感悟。</p>
     </div>
   );
 } 
