@@ -325,6 +325,53 @@ textarea:focus {
   transform: translateX(-50%);
 }
 
+.timeline-year-group {
+  position: relative;
+  margin-bottom: 2.5rem;
+}
+
+.timeline-year-group:last-child {
+  margin-bottom: 0;
+}
+
+.timeline-year-header {
+  position: relative;
+  margin-bottom: 2rem;
+  text-align: left;
+  padding-left: 20%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+}
+
+.timeline-year-header::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 20%;
+  right: 0;
+  height: 1px;
+  background-color: #e6e6e0;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.timeline-year {
+  display: inline-block;
+  background-color: #96514d;
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 0.4rem 1.2rem;
+  border-radius: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 5;
+  text-align: center;
+  min-width: 80px;
+}
+
 .timeline-entry {
   position: relative;
   display: flex;
@@ -628,6 +675,19 @@ details pre {
   .entry-nostr-id {
     margin-left: 0;
   }
+  
+  .timeline-year-header {
+    padding-left: 2rem;
+    text-align: left;
+    transform: translateX(0);
+    margin-bottom: 1.5rem;
+    margin-top: 1rem;
+  }
+  
+  .timeline-year-header::before {
+    left: 2rem;
+    right: 0;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -827,6 +887,16 @@ details pre {
     color: #a6a69e;
     background-color: #2a2a28;
     border-color: #38383a;
+  }
+  
+  .timeline-year {
+    background-color: #96514d;
+    opacity: 0.95;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+  
+  .timeline-year-header::before {
+    background-color: #38383a;
   }
 }
 

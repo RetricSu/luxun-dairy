@@ -165,6 +165,27 @@ function App() {
 
   const isToday = selectedDay === new Date().toISOString().split('T')[0];
 
+  // Add this new function to group entries by year
+  function groupEntriesByYear(entries: DiaryEntry[]) {
+    // Sort entries by date (newest first)
+    const sortedEntries = [...entries].sort((a, b) => 
+      new Date(b.day).getTime() - new Date(a.day).getTime()
+    );
+    
+    // Group by year
+    const grouped: Record<string, DiaryEntry[]> = {};
+    
+    sortedEntries.forEach(entry => {
+      const year = new Date(entry.day).getFullYear().toString();
+      if (!grouped[year]) {
+        grouped[year] = [];
+      }
+      grouped[year].push(entry);
+    });
+    
+    return grouped;
+  }
+
   return (
     <main class="main-container">
       <header className="app-header">
@@ -261,58 +282,59 @@ function App() {
             </div>
           )}
         </div>
-      ) : (
-        <div className="entries-list">
-          {selectedNostrEvent && nostrEventData ? (
-            <div className="nostr-event-view">
-              <div className="nostr-event-header">
-                <h3>Nostr 事件: {selectedNostrEvent.substring(0, 8)}...</h3>
-                <button className="close-button" onClick={closeNostrEventView}>关闭</button>
-              </div>
-              <div className="nostr-event-content">
-                {(() => {
-                  try {
-                    const event = JSON.parse(nostrEventData);
-                    return (
-                      <>
-                        <div className="nostr-event-meta">
-                          <p><strong>类型:</strong> {event.kind === 30027 ? "鲁迅日记格式 (30027)" : event.kind}</p>
-                          <p><strong>创建时间:</strong> {new Date(event.created_at * 1000).toLocaleString('zh-CN')}</p>
-                          <p><strong>公钥:</strong> {shortenKey(event.pubkey)}</p>
-                        </div>
-                        
-                        <div className="nostr-event-tags">
-                          <h4>标签:</h4>
-                          <ul>
-                            {event.tags.map((tag: any, index: number) => (
-                              <li key={index}>
-                                <strong>{tag[0]}:</strong> {tag[1]}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        
-                        <div className="nostr-event-content-text">
-                          <h4>内容:</h4>
-                          <pre>{event.content}</pre>
-                        </div>
-                        
-                        <details>
-                          <summary>原始 JSON</summary>
-                          <pre>{JSON.stringify(event, null, 2)}</pre>
-                        </details>
-                      </>
-                    );
-                  } catch (e) {
-                    return <pre>{formatNostrEvent(nostrEventData)}</pre>;
-                  }
-                })()}
-              </div>
-            </div>
-          ) : entries.length > 0 ? (
-            <div className="timeline-container">
-              <div className="timeline-line"></div>
-              {entries.map((entry) => (
+      ) : selectedNostrEvent && nostrEventData ? (
+        <div className="nostr-event-view">
+          <div className="nostr-event-header">
+            <h3>Nostr 事件: {selectedNostrEvent.substring(0, 8)}...</h3>
+            <button className="close-button" onClick={closeNostrEventView}>关闭</button>
+          </div>
+          <div className="nostr-event-content">
+            {(() => {
+              try {
+                const event = JSON.parse(nostrEventData);
+                return (
+                  <>
+                    <div className="nostr-event-meta">
+                      <p><strong>类型:</strong> {event.kind === 30027 ? "鲁迅日记格式 (30027)" : event.kind}</p>
+                      <p><strong>创建时间:</strong> {new Date(event.created_at * 1000).toLocaleString('zh-CN')}</p>
+                      <p><strong>公钥:</strong> {shortenKey(event.pubkey)}</p>
+                    </div>
+                    
+                    <div className="nostr-event-tags">
+                      <h4>标签:</h4>
+                      <ul>
+                        {event.tags.map((tag: any, index: number) => (
+                          <li key={index}>
+                            <strong>{tag[0]}:</strong> {tag[1]}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    <div className="nostr-event-content-text">
+                      <h4>内容:</h4>
+                      <pre>{event.content}</pre>
+                    </div>
+                    
+                    <details>
+                      <summary>原始 JSON</summary>
+                      <pre>{JSON.stringify(event, null, 2)}</pre>
+                    </details>
+                  </>
+                );
+              } catch (e) {
+                return <pre>{formatNostrEvent(nostrEventData)}</pre>;
+              }
+            })()}
+          </div>
+        </div>
+      ) : entries.length > 0 ? (
+        <div className="timeline-container">
+          <div className="timeline-line"></div>
+          {Object.entries(groupEntriesByYear(entries)).map(([year, yearEntries]) => (
+            <div key={year} className="timeline-year-group">
+              <span className="timeline-year">{year}年</span>
+              {yearEntries.map((entry) => (
                 <div key={entry.id} className="timeline-entry">
                   <div className="timeline-marker">
                     <div className="timeline-dot"></div>
@@ -343,10 +365,10 @@ function App() {
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="no-entries">暂无日记。开始写下您的第一篇日记吧！</p>
-          )}
+          ))}
         </div>
+      ) : (
+        <p className="no-entries">暂无日记。开始写下您的第一篇日记吧！</p>
       )}
     </main>
   );
