@@ -148,21 +148,21 @@ function App() {
   return (
     <main class="main-container">
       <header className="app-header">
-        <h1>Lu Xun's Diary</h1>
+        <h1>鲁迅日记</h1>
         
         <div className="header-actions">
           <button 
             className="header-button"
             onClick={() => setViewMode(viewMode === "write" ? "view" : "write")}
           >
-            {viewMode === "write" ? "View Entries" : "Write Entry"}
+            {viewMode === "write" ? "查看日记" : "写日记"}
           </button>
           
           <button 
             className="header-button"
             onClick={() => setShowSettings(!showSettings)}
           >
-            {showSettings ? "Hide Settings" : "Settings"}
+            {showSettings ? "隐藏设置" : "设置"}
           </button>
         </div>
       </header>
@@ -179,7 +179,7 @@ function App() {
           )}
           
           <div className="settings-item">
-            <span className="settings-label">Selected Date:</span>
+            <span className="settings-label">日期选择:</span>
             <input
               type="date"
               value={selectedDay}
@@ -201,19 +201,19 @@ function App() {
             <div className="completed-entry">
               <div className="completion-message">
                 <span className="checkmark">✓</span>
-                <h3>Today's entry completed!</h3>
-                <p>Well done on capturing your thoughts for the day.</p>
+                <h3>今日日记已完成！</h3>
+                <p>您已记录下今天的思绪与感悟。</p>
               </div>
             </div>
           ) : (
             <div className="entry-form">
               <div className="form-group main-textarea">
-                <label htmlFor="content">Write your thoughts...</label>
+                <label htmlFor="content">写下您的思绪...</label>
                 <textarea
                   id="content"
                   value={content}
                   onInput={(e) => setContent(e.currentTarget.value)}
-                  placeholder="What's on your mind today?"
+                  placeholder="今天有什么想法..."
                   rows={15}
                 />
               </div>
@@ -228,7 +228,7 @@ function App() {
                   className="weather-input"
                   value={weather}
                   onInput={(e) => setWeather(e.currentTarget.value)}
-                  placeholder="Weather..."
+                  placeholder="天气..."
                 />
                 
                 <button 
@@ -236,7 +236,7 @@ function App() {
                   onClick={saveDiaryEntry} 
                   disabled={!content.trim()}
                 >
-                  Save Entry
+                  保存日记
                 </button>
               </div>
             </div>
@@ -248,42 +248,48 @@ function App() {
             <div className="nostr-event-view">
               <div className="nostr-event-header">
                 <h3>Nostr Event: {selectedNostrEvent.substring(0, 8)}...</h3>
-                <button className="close-button" onClick={closeNostrEventView}>Close</button>
+                <button className="close-button" onClick={closeNostrEventView}>关闭</button>
               </div>
               <pre className="nostr-event-content">{formatNostrEvent(nostrEventData)}</pre>
             </div>
-          ) : (
-            entries.length > 0 ? (
-              entries.map((entry) => (
-                <div key={entry.id} className="entry-card">
-                  <div className="entry-header">
-                    <span className="entry-date">{formatDate(entry.created_at)}</span>
-                    <span className="entry-day">{entry.day}</span>
-                    <span className="entry-weather">Weather: {entry.weather}</span>
+          ) : entries.length > 0 ? (
+            <div className="timeline-container">
+              <div className="timeline-line"></div>
+              {entries.map((entry) => (
+                <div key={entry.id} className="timeline-entry">
+                  <div className="timeline-marker">
+                    <div className="timeline-dot"></div>
+                    <div className="timeline-date">{entry.day}</div>
                   </div>
-                  <div className="entry-content">
-                    {entry.content.split("\n").map((line, i) => (
-                      <p key={i}>{line}</p>
-                    ))}
-                  </div>
-                  {entry.nostr_id && (
-                    <div className="entry-footer">
-                      <span className="nostr-id">
-                        Nostr ID: {shortenKey(entry.nostr_id)}
-                        <button 
-                          className="view-nostr-button"
-                          onClick={() => viewNostrEvent(entry.nostr_id as string)}
-                        >
-                          View
-                        </button>
-                      </span>
+                  <div className="entry-card">
+                    <div className="entry-header">
+                      <span className="entry-weather">天气: {entry.weather}</span>
+                      <span className="entry-time">{formatDate(entry.created_at).split(' ')[1]}</span>
                     </div>
-                  )}
+                    <div className="entry-content">
+                      {entry.content.split("\n").map((line, i) => (
+                        <p key={i}>{line}</p>
+                      ))}
+                    </div>
+                    {entry.nostr_id && (
+                      <div className="entry-footer">
+                        <span className="nostr-id">
+                          Nostr ID: {shortenKey(entry.nostr_id)}
+                          <button 
+                            className="view-nostr-button"
+                            onClick={() => viewNostrEvent(entry.nostr_id as string)}
+                          >
+                            查看
+                          </button>
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              ))
-            ) : (
-              <p className="no-entries">No entries yet. Start writing!</p>
-            )
+              ))}
+            </div>
+          ) : (
+            <p className="no-entries">暂无日记。开始写下您的第一篇日记吧！</p>
           )}
         </div>
       )}
