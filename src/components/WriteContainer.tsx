@@ -25,8 +25,6 @@ export function WriteContainer({
 }: WriteContainerProps) {
   return (
     <div className="write-container">
-      {!dayHasEntry && <DayHeader selectedDay={selectedDay} />}
-      
       {dayHasEntry ? (
         <CompletedEntry selectedDay={selectedDay} />
       ) : (

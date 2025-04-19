@@ -1,17 +1,18 @@
 import { ViewMode } from "../types";
+import { DayHeader } from "./DayHeader";
 
 interface HeaderProps {
+  selectedDay: string;
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   showSettings: boolean;
   setShowSettings: (show: boolean) => void;
 }
 
-export function Header({ viewMode, setViewMode, showSettings, setShowSettings }: HeaderProps) {
+export function Header({ selectedDay, viewMode, setViewMode, showSettings, setShowSettings }: HeaderProps) {
   return (
     <header className="app-header">
-      <h1>鲁迅日记</h1>
-      
+      <DayHeader selectedDay={selectedDay} />
       <div className="header-actions">
         <button 
           className="header-button"

@@ -110,6 +110,7 @@ function App() {
   return (
     <main class="main-container">
       <Header 
+        selectedDay={selectedDay}
         viewMode={viewMode}
         setViewMode={setViewMode}
         showSettings={showSettings}
