@@ -36,26 +36,11 @@ export function CompletedEntry({ selectedDay }: CompletedEntryProps) {
       </div>
       <h3 className="m-0 mb-4 text-2xl text-[#3c7d73] dark:text-[#a2e2d8] font-medium">已完成</h3>
       <p className="text-[#6d7a75] dark:text-[#a6a69e] text-lg m-0 leading-relaxed max-w-lg mx-auto">您已记录 {formatDayDisplay(selectedDay)} 之事。</p>
+      <p className="text-[#6d7a75] dark:text-[#a6a69e] text-sm mt-6 mb-2">
+          为您随机展示一篇鲁迅先生的日记
+      </p>
       
       <div className="mt-12 max-w-lg mx-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="text-[#3c7d73] dark:text-[#a2e2d8] text-lg font-medium m-0">鲁迅先生的日记</h4>
-          <button 
-            onClick={fetchLuXunDiary}
-            className="flex items-center justify-center px-3 py-1 text-sm rounded bg-[#f5f5f0] dark:bg-[#2a2a2e] hover:bg-[#e9e9e4] dark:hover:bg-[#323236] text-[#4d5a55] dark:text-[#b6b6be] transition-colors duration-150"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
-              <path d="M23 4v6h-6"></path>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-            </svg>
-            换一条
-          </button>
-        </div>
-        
-        <p className="text-[#6d7a75] dark:text-[#a6a69e] text-sm mt-0 mb-6 text-left">
-          在您完成今日记录的同时，这里随机展示鲁迅先生的一篇日记，以供参考与思考。
-        </p>
-        
         <div className="p-5 border border-[#e9e4d9] dark:border-[#2c2c32] rounded-lg bg-[#fafaf8] dark:bg-[#1d1d20]">
           {loading ? (
             <div className="py-8 text-center text-[#6d7a75] dark:text-[#a6a69e]">
@@ -68,8 +53,17 @@ export function CompletedEntry({ selectedDay }: CompletedEntryProps) {
           ) : luxunDiary ? (
             <div>
               <div className="flex justify-between items-center mb-3">
-                <span className="text-[#3c7d73] dark:text-[#a2e2d8] font-medium">{luxunDiary.date}</span>
-                <span className="text-xs text-[#6d7a75] dark:text-[#a6a69e] bg-[#f0f0e8] dark:bg-[#2a2a2e] px-2 py-1 rounded">鲁迅日记</span>
+                <span className="text-[#3c7d73] dark:text-[#a2e2d8] font-medium">鲁迅 {new Date(luxunDiary.date).getFullYear()}年{new Date(luxunDiary.date).getMonth() + 1}月</span>
+                <button 
+                  onClick={fetchLuXunDiary}
+                  className="flex items-center justify-center px-3 py-1 text-xs text-[#6d7a75] dark:text-[#a6a69e] rounded bg-[#f5f5f0] dark:bg-[#2a2a2e] hover:bg-[#e9e9e4] dark:hover:bg-[#323236] text-[#4d5a55] dark:text-[#b6b6be] transition-colors duration-150"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                    <path d="M23 4v6h-6"></path>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                  </svg>
+                  换一条
+                </button>
               </div>
               <p className="text-[#4d5a55] dark:text-[#b6b6be] text-base leading-relaxed m-0 text-left whitespace-pre-line">{luxunDiary.content}</p>
             </div>
