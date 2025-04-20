@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import { DiaryEntry } from "../types";
+import { DiaryEntry, LuXunDiaryEntry } from "../types";
+import luxunDiaries from '../assets/luxun-full-diary.json';
 
 export async function loadNostrPublicKey(): Promise<string> {
   try {
@@ -68,5 +69,18 @@ export async function verifyNostrSignature(nostrId: string): Promise<boolean> {
   } catch (error) {
     console.error("Failed to verify Nostr signature:", error);
     throw error;
+  }
+}
+
+export async function getRandomLuXunDiaryEntry(): Promise<LuXunDiaryEntry | null> {
+  try {
+    if (luxunDiaries && luxunDiaries.length > 0) {
+      const randomIndex = Math.floor(Math.random() * luxunDiaries.length);
+      return luxunDiaries[randomIndex];
+    }
+    return null;
+  } catch (error) {
+    console.error("Failed to load Lu Xun diary entry:", error);
+    return null;
   }
 } 

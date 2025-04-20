@@ -7,4 +7,9 @@ export interface DiaryEntry {
   day: string; // YYYY-MM-DD format
 }
 
+export interface LuXunDiaryEntry {
+  date: string;
+  content: string;
+}
+
 export type ViewMode = "write" | "view"; 
