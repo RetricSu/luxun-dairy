@@ -13,7 +13,6 @@ use tauri::State;
 use uuid::Uuid;
 use hex;
 use once_cell::sync::Lazy;
-use rand;
 
 fn get_data_dir() -> PathBuf {
     let proj_dirs = ProjectDirs::from("com", "luxun", "diary")
@@ -236,12 +235,6 @@ fn get_or_create_nostr_keys(store: &Arc<DiaryStore>) -> Result<Keys, String> {
     Ok(keys)
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct LuXunDiaryEntry {
-    date: String,
-    content: String,
-}
-
 #[tauri::command]
 fn save_diary_entry(
     store: State<Arc<DiaryStore>>,
@@ -437,59 +430,6 @@ fn verify_nostr_signature(nostr_id: String) -> Result<bool, String> {
     }
 }
 
-#[tauri::command]
-fn get_random_luxun_diary() -> Result<LuXunDiaryEntry, String> {
-    use std::path::Path;
-    use rand::Rng;
-    
-    // Get the path to the public directory
-    let current_exe = std::env::current_exe()
-        .map_err(|e| format!("Failed to get current executable path: {}", e))?;
-    
-    let mut public_dir = current_exe.parent()
-        .ok_or_else(|| "Failed to get parent directory".to_string())?
-        .to_path_buf();
-    
-    // Check if we're in development or production
-    if public_dir.ends_with("src-tauri/target/debug") || public_dir.ends_with("src-tauri/target/release") {
-        // Development mode - navigate to the public directory
-        public_dir = current_exe.ancestors()
-            .nth(4) // Go up to the project root
-            .ok_or_else(|| "Failed to find project root".to_string())?
-            .join("public");
-    } else {
-        // Production mode - resources are in the app bundle
-        #[cfg(target_os = "macos")]
-        {
-            public_dir = Path::new(&public_dir).join("../Resources/public").to_path_buf();
-        }
-        #[cfg(target_os = "windows")]
-        {
-            public_dir = Path::new(&public_dir).join("public").to_path_buf();
-        }
-        #[cfg(target_os = "linux")]
-        {
-            public_dir = Path::new(&public_dir).join("public").to_path_buf();
-        }
-    }
-    
-    let json_path = public_dir.join("luxun-full-diary.json");
-    println!("Loading Lu Xun diary from: {}", json_path.display());
-    
-    let json_content = std::fs::read_to_string(json_path)
-        .map_err(|e| format!("Failed to read Lu Xun diary file: {}", e))?;
-    
-    let diary_entries: Vec<LuXunDiaryEntry> = serde_json::from_str(&json_content)
-        .map_err(|e| format!("Failed to parse Lu Xun diary JSON: {}", e))?;
-    
-    if diary_entries.is_empty() {
-        return Err("Lu Xun diary file is empty".to_string());
-    }
-    
-    let random_index = rand::thread_rng().gen_range(0..diary_entries.len());
-    Ok(diary_entries[random_index].clone())
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     println!("Starting Lu Xun's Diary application");
@@ -513,8 +453,7 @@ pub fn run() {
             get_nostr_event,
             get_nostr_public_key,
             check_day_has_entry,
-            verify_nostr_signature,
-            get_random_luxun_diary
+            verify_nostr_signature
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

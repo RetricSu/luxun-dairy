@@ -9,23 +9,32 @@ interface CompletedEntryProps {
 
 export function CompletedEntry({ selectedDay }: CompletedEntryProps) {
   const [luxunDiary, setLuxunDiary] = useState<LuXunDiaryEntry | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
 
   const fetchLuXunDiary = async () => {
-    setLoading(true);
     try {
       const entry = await getRandomLuXunDiaryEntry();
       setLuxunDiary(entry);
     } catch (error) {
       console.error("Failed to fetch Lu Xun diary entry:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchLuXunDiary();
   }, []);
+
+  // 格式化日期为中文年月
+  const formatLuxunDate = (dateString: string) => {
+    try {
+      const dateParts = dateString.split("-");
+      const year = dateParts[0];
+      const month = dateParts[1].replace(/^0+/, ''); // 移除前导零
+      const day = dateParts[2].replace(/^0+/, ''); // 移除前导零
+      return `${year}年${month}月${day}日`;
+    } catch (e) {
+      return dateString;
+    }
+  };
 
   return (
     <div className="py-14 text-center bg-white dark:bg-[#222226] rounded-lg border border-[#e9e4d9] dark:border-[#2c2c32] shadow-sm">
@@ -37,23 +46,19 @@ export function CompletedEntry({ selectedDay }: CompletedEntryProps) {
       <h3 className="m-0 mb-4 text-2xl text-[#3c7d73] dark:text-[#a2e2d8] font-medium">已完成</h3>
       <p className="text-[#6d7a75] dark:text-[#a6a69e] text-lg m-0 leading-relaxed max-w-lg mx-auto">您已记录 {formatDayDisplay(selectedDay)} 之事。</p>
       <p className="text-[#6d7a75] dark:text-[#a6a69e] text-sm mt-6 mb-2">
-          为您随机展示一篇鲁迅先生的日记
+        为您随机展示一篇鲁迅先生的日记
       </p>
       
       <div className="mt-12 max-w-lg mx-auto">
         <div className="p-5 border border-[#e9e4d9] dark:border-[#2c2c32] rounded-lg bg-[#fafaf8] dark:bg-[#1d1d20]">
-          {loading ? (
+          {!luxunDiary ? (
             <div className="py-8 text-center text-[#6d7a75] dark:text-[#a6a69e]">
-              <svg className="animate-spin h-5 w-5 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              加载鲁迅日记...
+              无法加载日记，请稍后再试
             </div>
-          ) : luxunDiary ? (
+          ) : (
             <div>
               <div className="flex justify-between items-center mb-3">
-                <span className="text-[#3c7d73] dark:text-[#a2e2d8] font-medium">鲁迅 {new Date(luxunDiary.date).getFullYear()}年{new Date(luxunDiary.date).getMonth() + 1}月</span>
+                <span className="text-[#3c7d73] dark:text-[#a2e2d8] font-medium">鲁迅 {formatLuxunDate(luxunDiary.date)}</span>
                 <button 
                   onClick={fetchLuXunDiary}
                   className="flex items-center justify-center px-3 py-1 text-xs text-[#6d7a75] dark:text-[#a6a69e] rounded bg-[#f5f5f0] dark:bg-[#2a2a2e] hover:bg-[#e9e9e4] dark:hover:bg-[#323236] text-[#4d5a55] dark:text-[#b6b6be] transition-colors duration-150"
@@ -66,10 +71,6 @@ export function CompletedEntry({ selectedDay }: CompletedEntryProps) {
                 </button>
               </div>
               <p className="text-[#4d5a55] dark:text-[#b6b6be] text-base leading-relaxed m-0 text-left whitespace-pre-line">{luxunDiary.content}</p>
-            </div>
-          ) : (
-            <div className="py-8 text-center text-[#6d7a75] dark:text-[#a6a69e]">
-              无法加载日记，请稍后再试
             </div>
           )}
         </div>
