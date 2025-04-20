@@ -70,5 +70,5 @@ export function groupEntriesByYear(entries: DiaryEntry[]): Record<string, DiaryE
 }
 
 export function isToday(dateString: string): boolean {
-  return dateString === new Date().toISOString().split('T')[0];
+  return dateString === new Date().toLocaleDateString('en-CA');
 } 

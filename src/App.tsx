@@ -12,7 +12,7 @@ function App() {
   const [content, setContent] = useState("");
   const [weather, setWeather] = useState("");
   const [selectedDay, setSelectedDay] = useState<string>(
-    new Date().toISOString().split('T')[0]
+    new Date().toLocaleDateString('en-CA')
   );
   const [dayHasEntry, setDayHasEntry] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<ViewMode>("write");
