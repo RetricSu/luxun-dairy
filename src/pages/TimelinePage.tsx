@@ -1,15 +1,20 @@
 import { useState, useEffect } from "preact/hooks";
 import { Timeline } from "../components/Timeline";
 import { Header } from "../components/Header";
-import { MonthCalendar } from "../components/WeekCalendar";
+import { MonthCalendar } from "../components/MonthCalendar";
 import * as diaryService from "../utils/diaryService";
 import { useNavigate } from "react-router-dom";
 import { DiaryEntry } from "../types";
+import { Modal } from "../components/Modal";
+import { NostrEventViewer } from "../components/NostrEventViewer";
 
 export function TimelinePage() {
   const navigate = useNavigate();
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const selectedDay = new Date().toLocaleDateString('en-CA');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedNostrEvent, setSelectedNostrEvent] = useState<string | null>(null);
+  const [nostrEventData, setNostrEventData] = useState<string | null>(null);
 
   useEffect(() => {
     loadEntries();
@@ -24,9 +29,23 @@ export function TimelinePage() {
     }
   }
 
-  function viewNostrEvent(nostrId: string) {
+  async function viewNostrEvent(nostrId: string) {
     if (!nostrId) return;
-    navigate(`/nostr/${nostrId}`);
+    
+    try {
+      setSelectedNostrEvent(nostrId);
+      const eventData = await diaryService.getNostrEvent(nostrId);
+      setNostrEventData(eventData);
+      setIsModalOpen(true);
+    } catch (error) {
+      console.error("Failed to load Nostr event:", error);
+    }
+  }
+
+  function closeNostrEventView() {
+    setIsModalOpen(false);
+    setSelectedNostrEvent(null);
+    setNostrEventData(null);
   }
 
   return (
@@ -45,6 +64,26 @@ export function TimelinePage() {
           viewNostrEvent={viewNostrEvent}
         />
       </div>
+
+      <Modal isOpen={isModalOpen} onClose={closeNostrEventView}>
+        {selectedNostrEvent && nostrEventData ? (
+          <NostrEventViewer
+            selectedNostrEvent={selectedNostrEvent}
+            nostrEventData={nostrEventData}
+            closeNostrEventView={closeNostrEventView}
+          />
+        ) : (
+          <div className="bg-white dark:bg-[#262624] rounded-md p-8 text-center">
+            <p className="text-lg mb-4">无法加载 Nostr 事件数据</p>
+            <button 
+              onClick={closeNostrEventView} 
+              className="bg-gradient-to-r from-[#49b3a1] to-[#3a9e8d] dark:from-[#43a595] dark:to-[#389384] text-white py-2 px-5 rounded-full hover:shadow-md"
+            >
+              关闭
+            </button>
+          </div>
+        )}
+      </Modal>
     </main>
   );
 } 
