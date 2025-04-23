@@ -1,155 +1,47 @@
-import { useEffect, useState } from "preact/hooks";
-import { DiaryEntry, ViewMode } from "./types";
-import { Header } from "./components/Header";
-import { SettingsPanel } from "./components/SettingsPanel";
-import { WriteContainer } from "./components/WriteContainer";
-import { NostrEventViewer } from "./components/NostrEventViewer";
-import { Timeline } from "./components/Timeline";
-import * as diaryService from "./utils/diaryService";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { WritePage } from "./pages/WritePage";
+import { TimelinePage } from "./pages/TimelinePage";
+import { NostrEventPage } from "./pages/NostrEventPage";
+import { SettingsPage } from "./pages/SettingsPage";
+import { ThemeProvider } from "./contexts/ThemeContext";
+
+// 在App组件外初始化主题，确保早期加载
+(function initTheme() {
+  try {
+    const savedTheme = localStorage.getItem("theme");
+    const root = document.documentElement;
+    
+    if (savedTheme === "dark") {
+      root.classList.add("dark");
+    } else if (savedTheme === "light") {
+      root.classList.add("light");
+    } else if (savedTheme === "system" || !savedTheme) {
+      // 跟随系统主题
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (prefersDark) {
+        root.classList.add("dark");
+      } else {
+        root.classList.add("light");
+      }
+    }
+  } catch (e) {
+    console.error("初始化主题失败:", e);
+  }
+})();
 
 function App() {
-  const [entries, setEntries] = useState<DiaryEntry[]>([]);
-  const [content, setContent] = useState("");
-  const [weather, setWeather] = useState("");
-  const [selectedDay, setSelectedDay] = useState<string>(
-    new Date().toLocaleDateString('en-CA')
-  );
-  const [dayHasEntry, setDayHasEntry] = useState<boolean>(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("write");
-  const [selectedNostrEvent, setSelectedNostrEvent] = useState<string | null>(null);
-  const [nostrEventData, setNostrEventData] = useState<string | null>(null);
-  const [nostrPublicKey, setNostrPublicKey] = useState<string>("");
-  const [errorMessage, setErrorMessage] = useState<string>("");
-  const [showSettings, setShowSettings] = useState<boolean>(false);
-
-  useEffect(() => {
-    loadEntries();
-    loadNostrPublicKey();
-  }, []);
-
-  useEffect(() => {
-    checkDayHasEntry(selectedDay);
-  }, [selectedDay]);
-
-  async function loadNostrPublicKey() {
-    try {
-      const publicKey = await diaryService.loadNostrPublicKey();
-      setNostrPublicKey(publicKey);
-    } catch (error) {
-      console.error("Failed to load Nostr public key:", error);
-    }
-  }
-
-  async function loadEntries() {
-    try {
-      const entriesData = await diaryService.loadEntries();
-      setEntries(entriesData);
-    } catch (error) {
-      console.error("Failed to load entries:", error);
-    }
-  }
-
-  async function checkDayHasEntry(day: string) {
-    try {
-      const hasEntry = await diaryService.checkDayHasEntry(day);
-      setDayHasEntry(hasEntry);
-      if (hasEntry) {
-        // Find the entry for this day
-        const entry = entries.find(e => e.day === day);
-        if (entry) {
-          setContent(entry.content);
-          setWeather(entry.weather);
-        }
-      } else {
-        setContent("");
-        setWeather("");
-      }
-    } catch (error) {
-      console.error("Failed to check if day has entry:", error);
-    }
-  }
-
-  async function saveDiaryEntry() {
-    if (!content.trim()) return;
-    setErrorMessage("");
-    
-    try {
-      await diaryService.saveDiaryEntry(content, weather, selectedDay);
-      await loadEntries();
-      setDayHasEntry(true);
-    } catch (error: any) {
-      console.error("Failed to save entry:", error);
-      setErrorMessage(error.toString());
-    }
-  }
-
-  async function viewNostrEvent(nostrId: string) {
-    if (!nostrId) return;
-    
-    try {
-      setSelectedNostrEvent(nostrId);
-      const eventData = await diaryService.getNostrEvent(nostrId);
-      setNostrEventData(eventData);
-    } catch (error) {
-      console.error("Failed to load Nostr event:", error);
-      setNostrEventData(null);
-    }
-  }
-
-  function closeNostrEventView() {
-    setSelectedNostrEvent(null);
-    setNostrEventData(null);
-  }
-
-  function handleDayChange(e: Event) {
-    const target = e.target as HTMLInputElement;
-    setSelectedDay(target.value);
-  }
-
   return (
-    <main className="max-w-4xl mx-auto py-8 px-6 sm:px-10 min-h-screen bg-[#faf9f6] dark:bg-[#121214]">
-      <Header 
-        selectedDay={selectedDay}
-        viewMode={viewMode}
-        setViewMode={setViewMode}
-        showSettings={showSettings}
-        setShowSettings={setShowSettings}
-      />
-      
-      {showSettings && (
-        <SettingsPanel
-          nostrPublicKey={nostrPublicKey}
-          selectedDay={selectedDay}
-          handleDayChange={handleDayChange}
-        />
-      )}
-
-      <div className="mt-8">
-        {viewMode === "write" ? (
-          <WriteContainer
-            dayHasEntry={dayHasEntry}
-            selectedDay={selectedDay}
-            content={content}
-            setContent={setContent}
-            weather={weather}
-            setWeather={setWeather}
-            errorMessage={errorMessage}
-            saveDiaryEntry={saveDiaryEntry}
-          />
-        ) : selectedNostrEvent && nostrEventData ? (
-          <NostrEventViewer
-            selectedNostrEvent={selectedNostrEvent}
-            nostrEventData={nostrEventData}
-            closeNostrEventView={closeNostrEventView}
-          />
-        ) : (
-          <Timeline 
-            entries={entries}
-            viewNostrEvent={viewNostrEvent}
-          />
-        )}
-      </div>
-    </main>
+    <ThemeProvider>
+      <HashRouter>
+        <Routes>
+          <Route path="/" element={<WritePage />} />
+          <Route path="/timeline" element={<TimelinePage />} />
+          <Route path="/nostr/:eventId" element={<NostrEventPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </HashRouter>
+    </ThemeProvider>
   );
 }
 
