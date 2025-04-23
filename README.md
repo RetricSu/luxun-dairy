@@ -2,7 +2,7 @@
 
 一个基于 Tauri、Preact 和 TypeScript 的桌面应用，用于记录每天的日记。
 
-<img src="./docs/screenshot.png" alt="鲁迅日记" height="180"><img src="./docs/screenshot-2.png" alt="鲁迅日记" height="180" height="300"><img src="./docs/screenshot-3.png" alt="鲁迅日记" height="180">
+<img src="./docs/screenshot.png" alt="鲁迅日记" height="180"><img src="./docs/screenshot-2.png" alt="鲁迅日记" height="180" height="300"><img src="./docs/screenshot-3.jpg" alt="鲁迅日记" height="180">
 
 ## 应用构想
 
