@@ -1,6 +1,7 @@
 import { useState, useEffect } from "preact/hooks";
 import { Timeline } from "../components/Timeline";
 import { Header } from "../components/Header";
+import { MonthCalendar } from "../components/WeekCalendar";
 import * as diaryService from "../utils/diaryService";
 import { useNavigate } from "react-router-dom";
 import { DiaryEntry } from "../types";
@@ -37,6 +38,8 @@ export function TimelinePage() {
       />
 
       <div className="mt-8">
+        <MonthCalendar entries={entries} />
+        
         <Timeline 
           entries={entries}
           viewNostrEvent={viewNostrEvent}

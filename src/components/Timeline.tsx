@@ -29,7 +29,11 @@ export function Timeline({ entries, viewNostrEvent }: TimelineProps) {
               {year}年
             </span>
           {yearEntries.map((entry) => (
-            <div key={entry.id} className="relative flex mb-8 last:mb-0">
+            <div 
+              key={entry.id} 
+              id={`entry-${entry.day}`} 
+              className="relative flex mb-8 last:mb-0 transition-all duration-300"
+            >
               <div className="relative w-[15%] pr-6 text-right">
                 <div className="absolute top-3 right-[-6px] w-3 h-3 bg-gradient-to-r from-[#49b3a1] to-[#3a9e8d] dark:from-[#43a595] dark:to-[#389384] rounded-full transform translate-x-1/2 z-10"></div>
               </div>
