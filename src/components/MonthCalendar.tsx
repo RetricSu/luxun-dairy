@@ -314,7 +314,7 @@ export function MonthCalendar({ entries }: MonthCalendarProps) {
       <div className="p-5 w-full md:w-1/2">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-[#5ba2ae] font-medium text-lg">{getMonthName()}</h2>
-          <span className="text-[#a8a89e] text-xs">日记记录</span>
+          <span className="text-[#a8a89e] text-sm">分享</span>
         </div>
         
         {/* Week day headers */}
@@ -362,7 +362,7 @@ export function MonthCalendar({ entries }: MonthCalendarProps) {
       
       {/* Right side: Navigation controls */}
       <div className="p-5 w-full md:w-1/2 border-t md:border-t-0 md:border-l border-[#e9e4d9] dark:border-[#2c2c32] flex flex-col">
-        <h3 className="text-[#a8a89e] text-sm mb-5">日历导航</h3>
+        <span className="text-[#a8a89e] text-sm mt-1 mb-5">日历导航</span>
         
         <div className="space-y-5">
           {/* Search box */}
@@ -403,13 +403,13 @@ export function MonthCalendar({ entries }: MonthCalendarProps) {
                     <div 
                       key={entry.id}
                       onClick={() => navigateToEntry(entry)}
-                      className="px-3 py-2 hover:bg-[#323240] cursor-pointer border-b border-[#3c3c42] last:border-b-0 transition-colors"
+                      className="px-3 py-2 hover:bg-[#d4d4d9] dark:hover:bg-[#403932] cursor-pointer border-b border-[#3c3c42] last:border-b-0 transition-colors"
                     >
                       <div className="flex justify-between text-xs">
                         <span className="text-[#5ba2ae]">{new Date(entry.day).toLocaleDateString('zh-CN', {year: 'numeric', month: 'long', day: 'numeric'})}</span>
                         <span className="text-[#a8c555]">{entry.weather}</span>
                       </div>
-                      <div className="text-[#e9e9e7] text-xs mt-1 line-clamp-1">
+                      <div className="text-xs mt-1 line-clamp-1">
                         {getShortPreview(entry)}
                       </div>
                     </div>
