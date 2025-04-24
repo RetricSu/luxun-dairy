@@ -309,7 +309,7 @@ export function MonthCalendar({ entries }: MonthCalendarProps) {
   const weekdayLabels = ["日", "一", "二", "三", "四", "五", "六"];
 
   return (
-    <div className="bg-[#121214] rounded-xl shadow mb-8 border border-[#222226] flex flex-col md:flex-row">
+    <div className="bg-white dark:bg-[#1a1a1e] rounded-xl shadow mb-8 border border-[#e9e4d9] dark:border-[#2c2c32] flex flex-col md:flex-row">
       {/* Left side: Calendar */}
       <div className="p-5 w-full md:w-1/2">
         <div className="flex justify-between items-center mb-4">
@@ -348,8 +348,8 @@ export function MonthCalendar({ entries }: MonthCalendarProps) {
                     ${dayInfo.currentMonth 
                       ? hasEntry 
                         ? 'bg-[#43a595] hover:bg-[#389384]' 
-                        : 'bg-[#2c2c32] hover:bg-[#3c3c42]'
-                      : 'bg-[#1d1d22] opacity-50 cursor-default'}
+                        : 'bg-[#7e7e92] dark:bg-[#262628] hover:bg-[#3c3c42]'
+                      : 'bg-[#7e7e92] dark:bg-[#262628] opacity-50 cursor-default'}
                     ${today ? 'ring-1 ring-[#8aac2f]' : ''}
                     ${hoveredDay === dayInfo.date ? 'ring-1 ring-[#8aac2f]' : ''}
                   `}
@@ -361,7 +361,7 @@ export function MonthCalendar({ entries }: MonthCalendarProps) {
       </div>
       
       {/* Right side: Navigation controls */}
-      <div className="p-5 w-full md:w-1/2 border-t md:border-t-0 md:border-l border-[#222226] flex flex-col">
+      <div className="p-5 w-full md:w-1/2 border-t md:border-t-0 md:border-l border-[#e9e4d9] dark:border-[#2c2c32] flex flex-col">
         <h3 className="text-[#a8a89e] text-sm mb-5">日历导航</h3>
         
         <div className="space-y-5">
@@ -376,7 +376,7 @@ export function MonthCalendar({ entries }: MonthCalendarProps) {
                 onChange={handleSearchInputChange}
                 onKeyPress={handleSearchKeyPress}
                 onFocus={handleSearchFocus}
-                className="w-full bg-[#2c2c32] border border-[#3c3c42] rounded-md px-3 py-2 text-[#e9e9e7] pr-10"
+                className="w-full bg-white dark:bg-[#1a1a1e] border border-[#e9e4d9] dark:border-[#2c2c32] rounded-md px-3 py-2 pr-10"
               />
               <button
                 onClick={handleSearch}
@@ -392,7 +392,7 @@ export function MonthCalendar({ entries }: MonthCalendarProps) {
             {showSearchResults && (
               <div 
                 ref={searchResultsRef}
-                className="absolute w-full mt-1 bg-[#262630] rounded-md border border-[#3c3c42] max-h-64 overflow-y-auto shadow-lg z-40"
+                className="absolute w-full mt-1 bg-white dark:bg-[#1a1a1e] rounded-md border border-[#3c3c42] max-h-64 overflow-y-auto shadow-lg z-40"
               >
                 {isSearching ? (
                   <div className="text-center py-4 text-sm text-[#717b7a]">
@@ -427,26 +427,26 @@ export function MonthCalendar({ entries }: MonthCalendarProps) {
           <div className="flex gap-2">
             <button 
               onClick={goToPreviousMonth}
-              className="flex-1 py-2 bg-[#2c2c32] hover:bg-[#3c3c42] text-[#e9e9e7] rounded-md transition-colors text-sm"
+              className="flex-1 py-2 bg-white dark:bg-[#1a1a1e] hover:bg-[#3c3c42] hover:text-[#e9e9e7] rounded-md transition-colors text-sm"
             >
               上个月
             </button>
             <button 
               onClick={goToCurrentMonth}
-              className="flex-1 py-2 bg-[#2c2c32] hover:bg-[#3c3c42] text-[#e9e9e7] rounded-md transition-colors text-sm"
+              className="flex-1 py-2 bg-white dark:bg-[#1a1a1e] hover:bg-[#3c3c42] hover:text-[#e9e9e7] rounded-md transition-colors text-sm"
             >
               回到今天
             </button>
             <button 
               onClick={goToNextMonth}
-              className="flex-1 py-2 bg-[#2c2c32] hover:bg-[#3c3c42] text-[#e9e9e7] rounded-md transition-colors text-sm"
+              className="flex-1 py-2 bg-white dark:bg-[#1a1a1e] hover:bg-[#3c3c42] hover:text-[#e9e9e7] rounded-md transition-colors text-sm"
             >
               下个月
             </button>
           </div>
           
           {/* Year/month input fields */}
-          <div className="p-4 bg-[#1d1d22] rounded-md border border-[#2c2c32]">
+          <div className="p-4 bg-white dark:bg-[#1a1a1e] rounded-md border border-[#e9e4d9] dark:border-[#2c2c32] ">
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-xs text-[#a8a89e] mb-2">年</label>
@@ -454,7 +454,7 @@ export function MonthCalendar({ entries }: MonthCalendarProps) {
                   type="number" 
                   value={yearInput}
                   onChange={(e) => setYearInput((e.target as HTMLInputElement).value)}
-                  className="w-full bg-[#2c2c32] border border-[#3c3c42] rounded px-3 py-2 text-[#e9e9e7]"
+                  className="w-full bg-white dark:bg-[#1a1a1e] border border-[#e9e4d9] dark:border-[#2c2c32]  rounded px-3 py-2"
                   min="1900"
                   max="2100"
                 />
@@ -465,7 +465,7 @@ export function MonthCalendar({ entries }: MonthCalendarProps) {
                   type="number" 
                   value={monthInput}
                   onChange={(e) => setMonthInput((e.target as HTMLInputElement).value)}
-                  className="w-full bg-[#2c2c32] border border-[#3c3c42] rounded px-3 py-2 text-[#e9e9e7]"
+                  className="w-full bg-white dark:bg-[#1a1a1e] border border-[#e9e4d9] dark:border-[#2c2c32]  rounded px-3 py-2"
                   min="1"
                   max="12"
                 />
