@@ -1,7 +1,16 @@
 @import "tailwindcss";
 
-@theme {
-  /* Colors */
+/* 基本样式 */
+html {
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* 全局颜色变量 */
+:root {
   --color-rice-paper: #f7f7f2;
   --color-rice-paper-dark: #121215;
   --color-border-light: #e6e6e0;
@@ -13,46 +22,31 @@
   --color-accent: #4a8c82;
   --color-accent-dark: #5dafa3;
   
-  /* Font families */
+  /* 字体 */
   --font-sans: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "STHeiti", "WenQuanYi Micro Hei", sans-serif;
   --font-kaiti: "PingFang SC", "STXingkai", "STKaiti", "Microsoft YaHei", sans-serif;
-
-  /* Background images */
-  --bg-image-rice-paper-pattern: url("data:image/svg+xml,%3Csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='rice-paper' width='40' height='40' patternUnits='userSpaceOnUse'%3E%3Crect width='40' height='40' fill='%23f7f7f2' fill-opacity='1'/%3E%3Cpath d='M0 20 L40 20' stroke='%23e6e6e0' stroke-width='0.5' stroke-opacity='0.05'/%3E%3Cpath d='M20 0 L20 40' stroke='%23e6e6e0' stroke-width='0.5' stroke-opacity='0.05'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100%25' height='100%25' fill='url(%23rice-paper)'/%3E%3C/svg%3E");
-  --bg-image-rice-paper-pattern-dark: url("data:image/svg+xml,%3Csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='rice-paper-dark' width='40' height='40' patternUnits='userSpaceOnUse'%3E%3Crect width='40' height='40' fill='%23121215' fill-opacity='1'/%3E%3Cpath d='M0 20 L40 20' stroke='%23191920' stroke-width='0.5' stroke-opacity='0.08'/%3E%3Cpath d='M20 0 L20 40' stroke='%23191920' stroke-width='0.5' stroke-opacity='0.08'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100%25' height='100%25' fill='url(%23rice-paper-dark)'/%3E%3C/svg%3E");
-
-  /* Line heights */
-  --leading-body: 1.75; /* 7/4 = 1.75 */
+  
+  /* 行高 */
+  --leading-body: 1.75; 
 }
 
-/* Base styles */
-html {
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
+/* 浅色主题（默认） */
 body {
-  color: var(--color-text-primary);
-  background-color: var(--color-rice-paper);
-  background-image: var(--bg-image-rice-paper-pattern);
   font-family: var(--font-sans);
   font-size: 16px;
   line-height: var(--leading-body);
   font-weight: 400;
+  color: var(--color-text-primary);
+  background-color: var(--color-rice-paper);
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    color: var(--color-text-primary-dark);
-    background-color: var(--color-rice-paper-dark);
-    background-image: var(--bg-image-rice-paper-pattern-dark);
-  }
+/* 深色主题 */
+html.dark body {
+  color: var(--color-text-primary-dark);
+  background-color: var(--color-rice-paper-dark);
 }
 
-/* Button styles */
+/* 按钮样式 */
 button, 
 [type='button'], 
 [type='reset'], 
@@ -60,7 +54,7 @@ button,
   cursor: pointer;
 }
 
-/* Clickable elements */
+/* 可点击元素 */
 a, 
 button, 
 .cursor-pointer, 
@@ -71,6 +65,7 @@ button,
   cursor: pointer;
 }
 
+/* 日记条目内容样式 */
 .entry-content p {
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
@@ -83,3 +78,20 @@ button,
 .entry-content p:last-child {
   margin-bottom: 0;
 } 
+
+/* 日记条目高亮效果 */
+@keyframes highlight-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(73, 179, 161, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(73, 179, 161, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(73, 179, 161, 0);
+  }
+}
+
+.highlight-entry {
+  animation: highlight-pulse 1.5s ease-out;
+}

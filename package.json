@@ -13,7 +13,8 @@
     "@tailwindcss/vite": "^4.1.4",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
-    "preact": "^10.25.1"
+    "preact": "^10.25.1",
+    "react-router-dom": "^7.5.1"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.9.3",

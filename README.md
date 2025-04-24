@@ -2,7 +2,7 @@
 
 一个基于 Tauri、Preact 和 TypeScript 的桌面应用，用于记录每天的日记。
 
-<img src="./docs/screenshot.png" alt="鲁迅日记" height="180"><img src="./docs/screenshot-2.png" alt="鲁迅日记" height="180" height="300"><img src="./docs/screenshot-3.png" alt="鲁迅日记" height="180">
+<img src="./docs/screenshot.png" alt="鲁迅日记" height="180"><img src="./docs/screenshot-2.png" alt="鲁迅日记" height="180" height="300"><img src="./docs/screenshot-3.jpg" alt="鲁迅日记" height="180">
 
 ## 应用构想
 
@@ -20,6 +20,13 @@
 - **避免零散想法**：反对记载零碎的想法和观点，因为日记是记录个人真实的生活，而不是表达思想和观点
 - **每日一记**：每天只能记录一次，培养规律的日记习惯
 - **随机展示**：记录完日记后会随机展示一篇鲁迅先生的日记，增加趣味性
+
+## TODO
+
+- [ ] 增加分项月历打开图片
+- [ ] 增加分享交互页面 URL 功能
+- [ ] 增加分享单条日记给某个 Nostr 用户功能
+- [ ] 更新数据库结构，年/月/日键值对
 
 ## 技术栈
 
