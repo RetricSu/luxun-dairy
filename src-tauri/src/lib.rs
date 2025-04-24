@@ -1,17 +1,17 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use chrono::{DateTime, Utc};
 use directories::ProjectDirs;
-use nostr_sdk::{EventBuilder, Keys, Kind, Tag, Event};
-use rusqlite::{params, Connection, Result as SqlResult, OptionalExtension};
+use nostr_sdk::{Event, EventBuilder, Keys, Kind, Tag, SecretKey};
+use rusqlite::{params, Connection, OptionalExtension, Result as SqlResult};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::PathBuf;
-use std::sync::Mutex;
 use std::sync::Arc;
+use std::sync::Mutex;
 use tauri::State;
 use uuid::Uuid;
-use hex;
+use ::hex;
 use once_cell::sync::Lazy;
 
 fn get_data_dir() -> PathBuf {
@@ -76,30 +76,6 @@ struct DiaryStore {
     nostr_keys: Mutex<Option<Keys>>,
 }
 
-fn get_nostr_events_dir() -> PathBuf {
-    let dir = get_data_dir().join("nostr_events");
-    fs::create_dir_all(&dir).expect("Failed to create nostr events directory");
-    println!("Nostr events directory: {}", dir.display());
-    dir
-}
-
-fn save_nostr_event(event_id: &str, event_json: &str) -> Result<(), String> {
-    let file_path = get_nostr_events_dir().join(format!("{}.json", event_id));
-    
-    let mut file = match File::create(&file_path) {
-        Ok(file) => file,
-        Err(e) => return Err(format!("Failed to create nostr event file: {}", e)),
-    };
-    
-    match file.write_all(event_json.as_bytes()) {
-        Ok(_) => {
-            println!("Saved Nostr event to: {}", file_path.display());
-            Ok(())
-        },
-        Err(e) => Err(format!("Failed to write nostr event: {}", e)),
-    }
-}
-
 // Using String for private key storage - hex encoded format
 #[derive(Serialize, Deserialize)]
 struct StoredKeys {
@@ -128,22 +104,22 @@ fn load_nostr_keys() -> Option<Keys> {
 
     match serde_json::from_str::<StoredKeys>(&contents) {
         Ok(stored_keys) => {
-            // Using try-block to simplify error handling
-            let result = || -> Option<Keys> {
-                // Convert hex to bytes
-                let bytes = hex::decode(&stored_keys.private_key_hex).ok()?;
-                // Use the constructor new() with a SecretKey
-                let secret_key = nostr_sdk::secp256k1::SecretKey::from_slice(&bytes).ok()?;
-                Some(Keys::new(secret_key))
-            }();
-            
-            match result {
-                Some(keys) => {
-                    println!("Loaded existing Nostr keys");
-                    Some(keys)
+            match hex::decode(&stored_keys.private_key_hex) {
+                Ok(bytes) => {
+                    match SecretKey::from_slice(&bytes) {
+                        Ok(secret_key) => {
+                            let keys = Keys::new(secret_key);
+                            println!("Loaded existing Nostr keys");
+                            Some(keys)
+                        },
+                        Err(e) => {
+                            println!("Failed to create secret key: {}", e);
+                            None
+                        }
+                    }
                 },
-                None => {
-                    println!("Failed to parse Nostr keys");
+                Err(e) => {
+                    println!("Failed to decode hex: {}", e);
                     None
                 }
             }
@@ -158,11 +134,8 @@ fn load_nostr_keys() -> Option<Keys> {
 fn save_nostr_keys(keys: &Keys) -> Result<(), String> {
     let file_path = get_nostr_keys_file_path();
     
-    // Get bytes from secret key
-    let secret_key = keys.secret_key()
-        .map_err(|e| format!("Failed to access secret key: {}", e))?;
-    
-    // Convert to hex string for storage
+    // Convert the secret key to hex string for storage
+    let secret_key = keys.secret_key();
     let private_key_hex = hex::encode(secret_key.as_ref());
     
     let stored_keys = StoredKeys { private_key_hex };
@@ -186,7 +159,8 @@ fn save_nostr_keys(keys: &Keys) -> Result<(), String> {
     }
 }
 
-fn create_nostr_event(keys: &Keys, content: &str, weather: &str, day: &str) -> Result<(String, String), String> {
+// Since sign() returns a Future, we need to make this function async
+async fn create_nostr_event(keys: &Keys, content: &str, weather: &str, day: &str) -> Result<(String, String), String> {
     // Create tags
     let d_tag = Tag::parse(vec!["d".to_string(), day.to_string()])
         .map_err(|e| format!("Failed to create d tag: {}", e))?;
@@ -194,14 +168,13 @@ fn create_nostr_event(keys: &Keys, content: &str, weather: &str, day: &str) -> R
     let weather_tag = Tag::parse(vec!["weather".to_string(), weather.to_string()])
         .map_err(|e| format!("Failed to create weather tag: {}", e))?;
     
-    // Use kind 30027 for diary entries
-    let event = EventBuilder::new(
-        Kind::from(30027), // Using 30027 as requested
-        content, // Content only contains the diary text
-        &[d_tag, weather_tag],
-    )
-    .to_event(keys)
-    .map_err(|e| format!("Failed to create Nostr event: {}", e))?;
+    // Create event builder with content and kind and add tags
+    // Use method chaining to avoid ownership issues
+    let event = EventBuilder::new(Kind::from(30027), content)
+        .tags(vec![d_tag, weather_tag])
+        .sign(keys)
+        .await
+        .map_err(|e| format!("Failed to create Nostr event: {}", e))?;
     
     let event_json = serde_json::to_string(&event)
         .map_err(|e| format!("Failed to serialize Nostr event: {}", e))?;
@@ -236,8 +209,8 @@ fn get_or_create_nostr_keys(store: &Arc<DiaryStore>) -> Result<Keys, String> {
 }
 
 #[tauri::command]
-fn save_diary_entry(
-    store: State<Arc<DiaryStore>>,
+async fn save_diary_entry(
+    store: State<'_, Arc<DiaryStore>>,
     content: String,
     weather: String,
     day: Option<String>,
@@ -263,8 +236,8 @@ fn save_diary_entry(
     let pubkey_hex = keys.public_key().to_string();
     println!("Using Nostr public key: {}", pubkey_hex);
     
-    // Create Nostr event
-    let (nostr_id, nostr_event_json) = create_nostr_event(&keys, &content, &weather, &entry_day)?;
+    // Create Nostr event - use await
+    let (nostr_id, nostr_event_json) = create_nostr_event(&keys, &content, &weather, &entry_day).await?;
     
     let entry = DiaryEntry {
         id: Uuid::new_v4().to_string(),
