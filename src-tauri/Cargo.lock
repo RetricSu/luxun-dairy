@@ -1112,12 +1112,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
 
 [[package]]
-name = "faster-hex"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51e2ce894d53b295cf97b05685aa077950ff3e8541af83217fc720a6437169f8"
-
-[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2280,7 +2274,6 @@ dependencies = [
  "chrono",
  "directories",
  "hex",
- "molecule",
  "nostr-sdk",
  "once_cell",
  "rusqlite",
@@ -2359,17 +2352,6 @@ dependencies = [
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "molecule"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2257975b60ee320cfdb812c7d4838814807758a895aa8a8489077553a661a6f4"
-dependencies = [
- "bytes",
- "cfg-if",
- "faster-hex",
 ]
 
 [[package]]

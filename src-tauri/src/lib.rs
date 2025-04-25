@@ -13,7 +13,6 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use tauri::State;
 use uuid::Uuid;
-mod common_diary;
 
 fn get_data_dir() -> PathBuf {
     let proj_dirs =
