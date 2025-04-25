@@ -1,7 +1,9 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+use ::hex;
 use chrono::{DateTime, Utc};
 use directories::ProjectDirs;
-use nostr_sdk::{Event, EventBuilder, Keys, Kind, Tag, SecretKey};
+use nostr_sdk::{Event, EventBuilder, Keys, Kind, SecretKey, Tag};
+use once_cell::sync::Lazy;
 use rusqlite::{params, Connection, OptionalExtension, Result as SqlResult};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
@@ -11,13 +13,12 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use tauri::State;
 use uuid::Uuid;
-use ::hex;
-use once_cell::sync::Lazy;
+mod common_diary;
 
 fn get_data_dir() -> PathBuf {
-    let proj_dirs = ProjectDirs::from("com", "luxun", "diary")
-        .expect("Failed to get project directories");
-    
+    let proj_dirs =
+        ProjectDirs::from("com", "luxun", "diary").expect("Failed to get project directories");
+
     let data_dir = proj_dirs.data_dir();
     fs::create_dir_all(data_dir).expect("Failed to create data directory");
     println!("Data directory: {}", data_dir.display());
@@ -36,9 +37,9 @@ fn get_nostr_keys_file_path() -> PathBuf {
 fn setup_db() -> SqlResult<Connection> {
     let db_path = get_db_path();
     println!("Database path: {}", db_path.display());
-    
+
     let conn = Connection::open(db_path)?;
-    
+
     // Create the diary entries table
     conn.execute(
         "CREATE TABLE IF NOT EXISTS diary_entries (
@@ -52,7 +53,7 @@ fn setup_db() -> SqlResult<Connection> {
         )",
         [],
     )?;
-    
+
     Ok(conn)
 }
 
@@ -95,7 +96,7 @@ fn load_nostr_keys() -> Option<Keys> {
             return None;
         }
     };
-    
+
     let mut contents = String::new();
     if let Err(e) = file.read_to_string(&mut contents) {
         println!("Failed to read nostr keys file: {}", e);
@@ -103,25 +104,21 @@ fn load_nostr_keys() -> Option<Keys> {
     }
 
     match serde_json::from_str::<StoredKeys>(&contents) {
-        Ok(stored_keys) => {
-            match hex::decode(&stored_keys.private_key_hex) {
-                Ok(bytes) => {
-                    match SecretKey::from_slice(&bytes) {
-                        Ok(secret_key) => {
-                            let keys = Keys::new(secret_key);
-                            println!("Loaded existing Nostr keys");
-                            Some(keys)
-                        },
-                        Err(e) => {
-                            println!("Failed to create secret key: {}", e);
-                            None
-                        }
-                    }
-                },
+        Ok(stored_keys) => match hex::decode(&stored_keys.private_key_hex) {
+            Ok(bytes) => match SecretKey::from_slice(&bytes) {
+                Ok(secret_key) => {
+                    let keys = Keys::new(secret_key);
+                    println!("Loaded existing Nostr keys");
+                    Some(keys)
+                }
                 Err(e) => {
-                    println!("Failed to decode hex: {}", e);
+                    println!("Failed to create secret key: {}", e);
                     None
                 }
+            },
+            Err(e) => {
+                println!("Failed to decode hex: {}", e);
+                None
             }
         },
         Err(e) => {
@@ -133,41 +130,46 @@ fn load_nostr_keys() -> Option<Keys> {
 
 fn save_nostr_keys(keys: &Keys) -> Result<(), String> {
     let file_path = get_nostr_keys_file_path();
-    
+
     // Convert the secret key to hex string for storage
     let secret_key = keys.secret_key();
     let private_key_hex = hex::encode(secret_key.as_ref());
-    
+
     let stored_keys = StoredKeys { private_key_hex };
-    
+
     let json = match serde_json::to_string(&stored_keys) {
         Ok(json) => json,
         Err(e) => return Err(format!("Failed to serialize nostr keys: {}", e)),
     };
-    
+
     let mut file = match File::create(&file_path) {
         Ok(file) => file,
         Err(e) => return Err(format!("Failed to create nostr keys file: {}", e)),
     };
-    
+
     match file.write_all(json.as_bytes()) {
         Ok(_) => {
             println!("Successfully saved Nostr keys");
             Ok(())
-        },
+        }
         Err(e) => Err(format!("Failed to write nostr keys: {}", e)),
     }
 }
 
 // Since sign() returns a Future, we need to make this function async
-async fn create_nostr_event(keys: &Keys, content: &str, weather: &str, day: &str) -> Result<(String, String), String> {
+async fn create_nostr_event(
+    keys: &Keys,
+    content: &str,
+    weather: &str,
+    day: &str,
+) -> Result<(String, String), String> {
     // Create tags
     let d_tag = Tag::parse(vec!["d".to_string(), day.to_string()])
         .map_err(|e| format!("Failed to create d tag: {}", e))?;
-    
+
     let weather_tag = Tag::parse(vec!["weather".to_string(), weather.to_string()])
         .map_err(|e| format!("Failed to create weather tag: {}", e))?;
-    
+
     // Create event builder with content and kind and add tags
     // Use method chaining to avoid ownership issues
     let event = EventBuilder::new(Kind::from(30027), content)
@@ -175,36 +177,36 @@ async fn create_nostr_event(keys: &Keys, content: &str, weather: &str, day: &str
         .sign(keys)
         .await
         .map_err(|e| format!("Failed to create Nostr event: {}", e))?;
-    
+
     let event_json = serde_json::to_string(&event)
         .map_err(|e| format!("Failed to serialize Nostr event: {}", e))?;
-    
+
     Ok((event.id.to_string(), event_json))
 }
 
 fn get_or_create_nostr_keys(store: &Arc<DiaryStore>) -> Result<Keys, String> {
     let mut nostr_keys_guard = store.nostr_keys.lock().unwrap();
-    
+
     if let Some(keys) = nostr_keys_guard.as_ref() {
         return Ok(keys.clone());
     }
-    
+
     // Try to load existing keys
     if let Some(keys) = load_nostr_keys() {
         *nostr_keys_guard = Some(keys.clone());
         return Ok(keys);
     }
-    
+
     // Generate new keys
     println!("Generating new Nostr keys");
     let keys = Keys::generate();
-    
+
     // Save the keys
     save_nostr_keys(&keys)?;
-    
+
     // Update the store
     *nostr_keys_guard = Some(keys.clone());
-    
+
     Ok(keys)
 }
 
@@ -216,10 +218,10 @@ async fn save_diary_entry(
     day: Option<String>,
 ) -> Result<DiaryEntry, String> {
     println!("Creating new diary entry with weather: {}", weather);
-    
+
     // Use provided day or get current day
     let entry_day = day.unwrap_or_else(|| Utc::now().format("%Y-%m-%d").to_string());
-    
+
     // Check if an entry already exists for this day
     match entry_exists_for_day(&entry_day) {
         Ok(exists) if exists => {
@@ -230,15 +232,16 @@ async fn save_diary_entry(
         }
         _ => {}
     }
-    
+
     // Get or create Nostr keys
     let keys = get_or_create_nostr_keys(&store)?;
     let pubkey_hex = keys.public_key().to_string();
     println!("Using Nostr public key: {}", pubkey_hex);
-    
+
     // Create Nostr event - use await
-    let (nostr_id, nostr_event_json) = create_nostr_event(&keys, &content, &weather, &entry_day).await?;
-    
+    let (nostr_id, nostr_event_json) =
+        create_nostr_event(&keys, &content, &weather, &entry_day).await?;
+
     let entry = DiaryEntry {
         id: Uuid::new_v4().to_string(),
         content,
@@ -247,14 +250,14 @@ async fn save_diary_entry(
         nostr_id: Some(nostr_id.clone()),
         day: entry_day,
     };
-    
+
     println!("Generated diary entry with ID: {}", entry.id);
-    
+
     // Save entry to database
     if let Err(e) = save_entry_to_db(&entry, &nostr_event_json) {
         return Err(format!("Failed to save entry to database: {}", e));
     }
-    
+
     Ok(entry)
 }
 
@@ -296,22 +299,25 @@ fn greet(name: &str) -> String {
 
 fn save_entry_to_db(entry: &DiaryEntry, nostr_event_json: &str) -> SqlResult<()> {
     let conn = DB_CONNECTION.lock().unwrap();
-    
+
     // Check if an entry already exists for this day
-    let existing: Option<String> = conn.query_row(
-        "SELECT id FROM diary_entries WHERE day = ?1",
-        params![entry.day],
-        |row| row.get(0),
-    ).optional()?;
-    
+    let existing: Option<String> = conn
+        .query_row(
+            "SELECT id FROM diary_entries WHERE day = ?1",
+            params![entry.day],
+            |row| row.get(0),
+        )
+        .optional()?;
+
     if let Some(existing_id) = existing {
         if existing_id != entry.id {
-            return Err(rusqlite::Error::InvalidParameterName(
-                format!("An entry already exists for day: {}", entry.day)
-            ));
+            return Err(rusqlite::Error::InvalidParameterName(format!(
+                "An entry already exists for day: {}",
+                entry.day
+            )));
         }
     }
-    
+
     conn.execute(
         "INSERT OR REPLACE INTO diary_entries (id, content, weather, created_at, nostr_id, day, nostr_event)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
@@ -325,7 +331,7 @@ fn save_entry_to_db(entry: &DiaryEntry, nostr_event_json: &str) -> SqlResult<()>
             nostr_event_json
         ],
     )?;
-    
+
     println!("Saved entry to database with ID: {}", entry.id);
     Ok(())
 }
@@ -334,15 +340,15 @@ fn load_entries_from_db() -> SqlResult<Vec<DiaryEntry>> {
     let conn = DB_CONNECTION.lock().unwrap();
     let mut stmt = conn.prepare(
         "SELECT id, content, weather, created_at, nostr_id, day FROM diary_entries 
-         ORDER BY created_at DESC"
+         ORDER BY created_at DESC",
     )?;
-    
+
     let entries_iter = stmt.query_map([], |row| {
         let created_at_str: String = row.get(3)?;
         let created_at = DateTime::parse_from_rfc3339(&created_at_str)
             .map(|dt| dt.with_timezone(&Utc))
             .unwrap_or_else(|_| Utc::now());
-        
+
         Ok(DiaryEntry {
             id: row.get(0)?,
             content: row.get(1)?,
@@ -352,12 +358,12 @@ fn load_entries_from_db() -> SqlResult<Vec<DiaryEntry>> {
             day: row.get(5)?,
         })
     })?;
-    
+
     let mut entries = Vec::new();
     for entry_result in entries_iter {
         entries.push(entry_result?);
     }
-    
+
     println!("Loaded {} entries from database", entries.len());
     Ok(entries)
 }
@@ -368,7 +374,8 @@ fn get_nostr_event_from_db(nostr_id: &str) -> SqlResult<Option<String>> {
         "SELECT nostr_event FROM diary_entries WHERE nostr_id = ?1",
         params![nostr_id],
         |row| row.get(0),
-    ).optional()
+    )
+    .optional()
 }
 
 fn entry_exists_for_day(day: &str) -> SqlResult<bool> {
@@ -389,16 +396,16 @@ fn verify_nostr_signature(nostr_id: String) -> Result<bool, String> {
         Ok(None) => return Err(format!("Nostr event with ID {} not found", nostr_id)),
         Err(e) => return Err(format!("Failed to get Nostr event: {}", e)),
     };
-    
+
     // Parse the event JSON
     let event: Event = match serde_json::from_str(&event_json) {
         Ok(event) => event,
         Err(e) => return Err(format!("Failed to parse Nostr event: {}", e)),
     };
-    
+
     // Verify the signature
     match event.verify() {
-        Ok(()) => Ok(true),  // If verify() returns Ok(()), the signature is valid
+        Ok(()) => Ok(true), // If verify() returns Ok(()), the signature is valid
         Err(e) => Err(format!("Error verifying signature: {}", e)),
     }
 }
@@ -406,11 +413,11 @@ fn verify_nostr_signature(nostr_id: String) -> Result<bool, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     println!("Starting Lu Xun's Diary application");
-    
+
     // Initialize database
     Lazy::force(&DB_CONNECTION);
     println!("Database initialized");
-    
+
     // Initialize diary store
     let diary_store = Arc::new(DiaryStore {
         nostr_keys: Mutex::new(None),
