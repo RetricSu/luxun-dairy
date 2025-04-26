@@ -1,6 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { WritePage } from "./pages/WritePage";
-import { TimelinePage } from "./pages/TimelinePage";
+import { ReadPage } from "./pages/ReadPage";
 import { NostrEventPage } from "./pages/NostrEventPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -35,7 +35,7 @@ function App() {
       <HashRouter>
         <Routes>
           <Route path="/" element={<WritePage />} />
-          <Route path="/timeline" element={<TimelinePage />} />
+          <Route path="/read" element={<ReadPage />} />
           <Route path="/nostr/:eventId" element={<NostrEventPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -9,7 +9,7 @@ import { Modal } from "../components/Modal";
 import { NostrEventViewer } from "../components/NostrEventViewer";
 import { CommonDiaryReader } from "../components/CommonDiaryReader";
 
-export function TimelinePage() {
+export function ReadPage() {
   const navigate = useNavigate();
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const selectedDay = new Date().toLocaleDateString('en-CA');

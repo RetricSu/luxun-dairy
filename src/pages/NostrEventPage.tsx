@@ -27,7 +27,7 @@ export function NostrEventPage() {
   }
 
   function closeNostrEventView() {
-    navigate('/timeline');
+    navigate('/read');
   }
 
   return (
@@ -49,7 +49,7 @@ export function NostrEventPage() {
           <div className="text-center p-12">
             <p className="text-lg">无法加载 Nostr 事件数据</p>
             <button 
-              onClick={() => navigate('/timeline')} 
+              onClick={() => navigate('/read')} 
               className="mt-4 bg-gradient-to-r from-[#49b3a1] to-[#3a9e8d] dark:from-[#43a595] dark:to-[#389384] text-white py-2 px-5 rounded-full hover:shadow-md"
             >
               返回时间线
