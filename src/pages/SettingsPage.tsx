@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import * as diaryService from "../utils/diaryService";
 import { shortenKey } from "../utils/helpers";
 import { useTheme } from "../contexts/ThemeContext";
+import { invoke } from "@tauri-apps/api/core";
 
 export function SettingsPage() {
   const navigate = useNavigate();
@@ -11,9 +12,14 @@ export function SettingsPage() {
   const [selectedDay, setSelectedDay] = useState<string>(
     new Date().toLocaleDateString('en-CA')
   );
+  const [dirPath, setDirPath] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [cacheStatus, setCacheStatus] = useState<string>("");
+  const [loadingStatus, setLoadingStatus] = useState(false);
 
   useEffect(() => {
     loadNostrPublicKey();
+    getCacheStatus();
   }, []);
 
   async function loadNostrPublicKey() {
@@ -25,19 +31,55 @@ export function SettingsPage() {
     }
   }
 
+  async function getCacheStatus() {
+    setLoadingStatus(true);
+    try {
+      const status = await diaryService.getCommonDiariesCacheStatus();
+      setCacheStatus(status);
+    } catch (error) {
+      console.error("Failed to get cache status:", error);
+      setCacheStatus("获取缓存状态失败");
+    } finally {
+      setLoadingStatus(false);
+    }
+  }
+
   function handleDayChange(e: Event) {
     const target = e.target as HTMLInputElement;
     setSelectedDay(target.value);
   }
 
-  // 主题切换处理函数
+  const showCommonDiariesDir = async () => {
+    try {
+      const path = await invoke<string>("get_common_diaries_dir_path");
+      setDirPath(path);
+    } catch (error) {
+      console.error("Failed to get common diaries directory:", error);
+    }
+  };
+
+  const refreshCommonDiariesCache = async () => {
+    if (refreshing) return;
+    
+    setRefreshing(true);
+    try {
+      await diaryService.refreshCommonDiariesCache();
+      // After refreshing, update the cache status
+      await getCacheStatus();
+      alert("公共日记缓存已重建，可以访问'阅读'页面查看更新");
+    } catch (error) {
+      console.error("Failed to refresh common diaries cache:", error);
+      alert("刷新缓存失败");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   function handleThemeChange(newTheme: "light" | "dark" | "system") {
     console.log("切换主题为:", newTheme);
     
-    // 使用Context API切换主题
     setTheme(newTheme);
     
-    // 同时也直接更新DOM，以防Context API不工作
     const root = document.documentElement;
     root.classList.remove("light", "dark");
     
@@ -92,6 +134,71 @@ export function SettingsPage() {
               {nostrPublicKey ? shortenKey(nostrPublicKey) : "未设置 Nostr 公钥"}
             </div>
           </div>
+        </div>
+        
+        <div className="mb-8">
+          <h2 className="text-xl font-medium mb-4 text-[#42403a] dark:text-[#e6e1d5]">名人日记</h2>
+          <p className="text-sm mb-4 text-[#6d6a5c] dark:text-[#a2e2d8]">
+            您可以添加格式化的名人日记 JSON 文件至指定目录，系统会自动加载它们。
+          </p>
+          
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              onClick={showCommonDiariesDir}
+              className="bg-[#f0ede6] dark:bg-[#2a2a32] text-[#6d6a5c] dark:text-[#a2e2d8] px-4 py-2 rounded-lg border border-[#e6e1d5] dark:border-[#323237] hover:bg-[#e9e4d9] dark:hover:bg-[#323237]"
+            >
+              查看名人日记目录
+            </button>
+            
+            <button
+              onClick={refreshCommonDiariesCache}
+              disabled={refreshing}
+              className={`bg-[#f0ede6] dark:bg-[#2a2a32] text-[#6d6a5c] dark:text-[#a2e2d8] px-4 py-2 rounded-lg border border-[#e6e1d5] dark:border-[#323237] ${
+                refreshing 
+                  ? "opacity-50 cursor-not-allowed" 
+                  : "hover:bg-[#e9e4d9] dark:hover:bg-[#323237]"
+              }`}
+            >
+              {refreshing ? "刷新中..." : "重建缓存"}
+            </button>
+          </div>
+          
+          <div className="mb-4 p-4 bg-[#f7f5f0] dark:bg-[#262630] rounded-lg border border-[#e6e1d5] dark:border-[#323237]">
+            <div className="flex items-center mb-2">
+              <svg className="h-5 w-5 mr-2 text-[#49b3a1] dark:text-[#43a595]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <p className="text-sm font-medium text-[#6d6a5c] dark:text-[#a2e2d8]">
+                缓存状态
+                {loadingStatus && <span className="ml-2 text-xs italic opacity-70">更新中...</span>}
+              </p>
+            </div>
+            <p className="text-sm py-2 px-3 bg-white dark:bg-[#1a1a1e] rounded border border-[#e6e1d5] dark:border-[#323237]">
+              {loadingStatus ? "正在获取缓存状态..." : cacheStatus || "暂无缓存信息"}
+            </p>
+            <p className="text-xs mt-2 text-[#8c7c67] dark:text-[#8c8c84]">
+              * 缓存可提高应用性能，减少文件加载时间。添加或修改日记文件后，请重建缓存。
+            </p>
+          </div>
+          
+          {dirPath && (
+            <div className="mb-4 p-3 bg-[#f7f5f0] dark:bg-[#262630] rounded-lg border border-[#e6e1d5] dark:border-[#323237]">
+              <p className="text-sm text-[#6d6a5c] dark:text-[#a2e2d8] mb-1">名人日记目录路径:</p>
+              <code className="block text-xs p-2 bg-white dark:bg-[#1a1a1e] rounded border border-[#e6e1d5] dark:border-[#323237] overflow-x-auto">
+                {dirPath}
+              </code>
+              <p className="text-xs mt-2 text-[#6d6a5c] dark:text-[#8c8c84]">
+                请将您的JSON文件放在此目录中，应用将自动加载它们。
+                添加或更新文件后请点击"刷新缓存"按钮使其生效。
+              </p>
+              <button
+                onClick={() => setDirPath(null)}
+                className="mt-2 text-xs text-[#49b3a1] dark:text-[#43a595] hover:underline"
+              >
+                隐藏路径
+              </button>
+            </div>
+          )}
         </div>
         
         <div className="mb-8">

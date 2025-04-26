@@ -13,3 +13,19 @@ export interface LuXunDiaryEntry {
 }
 
 export type ViewMode = "write" | "view"; 
+
+export interface CommonDiaryItem {
+  title?: string;
+  content: string;
+  iso_date?: string;
+  date_raw?: string;
+  weather?: string;
+  tags?: string[];
+}
+
+export interface CommonDiary {
+  author: string;
+  title?: string;
+  count: number;
+  items: CommonDiaryItem[];
+} 

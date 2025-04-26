@@ -81,7 +81,7 @@ export function WritePage() {
       <Header 
         selectedDay={selectedDay}
         viewMode="write"
-        onViewModeChange={() => navigate('/timeline')}
+        onViewModeChange={() => navigate('/read')}
       />
 
       <div className="mt-8">

@@ -23,10 +23,26 @@
 
 ## TODO
 
-- [ ] 增加分项月历打开图片
-- [ ] 增加分享交互页面 URL 功能
+- [ ] 增加分享月历图片功能
+- [ ] 增加分享单天日记图片功能
 - [ ] 增加分享单条日记给某个 Nostr 用户功能
+- [x] 增加更多文学日记：苏轼、徐霞客
 - [ ] 更新数据库结构，年/月/日键值对
+
+## Common Diaries
+
+This application includes a feature that allows loading famous diaries (such as Lu Xun's diary, Xu Xiake's travels, and Su Dongpo's writings) from external JSON files. This approach allows you to add new diaries without rebuilding the application, keeping the app size small and making it more flexible.
+
+### How to Use Common Diaries
+
+1. Format your diary data according to the Common Diary specification (see `common-diary/common-diary.md`)
+2. Save your file as a JSON file (e.g., `luxun-diary.json`)
+3. Place the file in the common diaries directory:
+   - **Windows**: `%APPDATA%\com.luxun.diary\common_diaries\`
+   - **macOS**: `~/Library/Application Support/com.luxun.diary/common_diaries/`
+   - **Linux**: `~/.local/share/com.luxun.diary/common_diaries/`
+
+Example files can be found in the `common-diary` directory of the project.
 
 ## 技术栈
 

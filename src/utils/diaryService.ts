@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { DiaryEntry, LuXunDiaryEntry } from "../types";
+import { DiaryEntry, LuXunDiaryEntry, CommonDiary } from "../types";
 import luxunDiaries from '../assets/luxun-full-diary.json';
 
 export async function loadNostrPublicKey(): Promise<string> {
@@ -82,5 +82,33 @@ export async function getRandomLuXunDiaryEntry(): Promise<LuXunDiaryEntry | null
   } catch (error) {
     console.error("Failed to load Lu Xun diary entry:", error);
     return null;
+  }
+}
+
+export async function loadCommonDiaries(): Promise<CommonDiary[]> {
+  try {
+    return await invoke<CommonDiary[]>("list_common_diaries");
+  } catch (error) {
+    console.error("Failed to load common diaries:", error);
+    throw error;
+  }
+}
+
+export async function refreshCommonDiariesCache(): Promise<void> {
+  try {
+    await invoke<void>("refresh_common_diaries_cache");
+    console.log("Common diaries cache refreshed successfully");
+  } catch (error) {
+    console.error("Failed to refresh common diaries cache:", error);
+    throw error;
+  }
+}
+
+export async function getCommonDiariesCacheStatus(): Promise<string> {
+  try {
+    return await invoke<string>("get_common_diaries_cache_status");
+  } catch (error) {
+    console.error("Failed to get common diaries cache status:", error);
+    throw error;
   }
 } 
