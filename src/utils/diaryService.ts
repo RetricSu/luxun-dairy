@@ -92,4 +92,14 @@ export async function loadCommonDiaries(): Promise<CommonDiary[]> {
     console.error("Failed to load common diaries:", error);
     throw error;
   }
+}
+
+export async function refreshCommonDiariesCache(): Promise<void> {
+  try {
+    await invoke<void>("refresh_common_diaries_cache");
+    console.log("Common diaries cache refreshed successfully");
+  } catch (error) {
+    console.error("Failed to refresh common diaries cache:", error);
+    throw error;
+  }
 } 

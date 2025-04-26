@@ -86,11 +86,6 @@ export function CommonDiaryReader({ diary }: CommonDiaryReaderProps) {
     setRandomSeed(randomSeed === null ? Date.now() : Date.now());
   };
   
-  // 清除随机排序
-  const clearRandom = () => {
-    setRandomSeed(null);
-  };
-  
   // 简易伪随机数生成器（基于种子）
   const seedRandom = (seed: number) => {
     return () => {

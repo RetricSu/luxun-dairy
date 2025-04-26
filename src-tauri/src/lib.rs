@@ -14,6 +14,9 @@ use std::sync::Mutex;
 use tauri::State;
 use uuid::Uuid;
 
+// In-memory cache of loaded common diaries
+static DIARY_CACHE: Lazy<Mutex<Option<Vec<CommonDiary>>>> = Lazy::new(|| Mutex::new(None));
+
 fn get_data_dir() -> PathBuf {
     let proj_dirs =
         ProjectDirs::from("com", "luxun", "diary").expect("Failed to get project directories");
@@ -483,6 +486,17 @@ fn load_common_diary(file_path: &PathBuf) -> Result<CommonDiary, String> {
 // Function to list all available common diaries
 #[tauri::command]
 fn list_common_diaries() -> Result<Vec<CommonDiary>, String> {
+    // Try to get cached diaries
+    let mut cache = DIARY_CACHE.lock().unwrap();
+    
+    // Return cached data if available
+    if let Some(diaries) = cache.as_ref() {
+        println!("Returning {} common diaries from cache", diaries.len());
+        return Ok(diaries.clone());
+    }
+    
+    // Otherwise load from files
+    println!("Loading common diaries from files");
     let files = list_common_diary_files()?;
     
     let mut diaries = Vec::new();
@@ -493,6 +507,10 @@ fn list_common_diaries() -> Result<Vec<CommonDiary>, String> {
         }
     }
     
+    // Update cache
+    println!("Caching {} common diaries", diaries.len());
+    *cache = Some(diaries.clone());
+    
     Ok(diaries)
 }
 
@@ -501,6 +519,15 @@ fn list_common_diaries() -> Result<Vec<CommonDiary>, String> {
 fn get_common_diaries_dir_path() -> String {
     let dir = get_common_diaries_dir();
     dir.to_string_lossy().to_string()
+}
+
+// Function to refresh the common diaries cache
+#[tauri::command]
+fn refresh_common_diaries_cache() -> Result<(), String> {
+    println!("Refreshing common diaries cache");
+    let mut cache = DIARY_CACHE.lock().unwrap();
+    *cache = None;
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -528,7 +555,8 @@ pub fn run() {
             check_day_has_entry,
             verify_nostr_signature,
             list_common_diaries,
-            get_common_diaries_dir_path
+            get_common_diaries_dir_path,
+            refresh_common_diaries_cache
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -13,6 +13,7 @@ export function SettingsPage() {
     new Date().toLocaleDateString('en-CA')
   );
   const [dirPath, setDirPath] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadNostrPublicKey();
@@ -38,6 +39,21 @@ export function SettingsPage() {
       setDirPath(path);
     } catch (error) {
       console.error("Failed to get common diaries directory:", error);
+    }
+  };
+
+  const refreshCommonDiariesCache = async () => {
+    if (refreshing) return;
+    
+    setRefreshing(true);
+    try {
+      await diaryService.refreshCommonDiariesCache();
+      alert("公共日记缓存已刷新");
+    } catch (error) {
+      console.error("Failed to refresh common diaries cache:", error);
+      alert("刷新缓存失败");
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -108,7 +124,28 @@ export function SettingsPage() {
             您可以添加格式化的名人日记 JSON 文件至指定目录，系统会自动加载它们。
           </p>
           
-          {dirPath ? (
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              onClick={showCommonDiariesDir}
+              className="bg-[#f0ede6] dark:bg-[#2a2a32] text-[#6d6a5c] dark:text-[#a2e2d8] px-4 py-2 rounded-lg border border-[#e6e1d5] dark:border-[#323237] hover:bg-[#e9e4d9] dark:hover:bg-[#323237]"
+            >
+              查看名人日记目录
+            </button>
+            
+            <button
+              onClick={refreshCommonDiariesCache}
+              disabled={refreshing}
+              className={`bg-[#f0ede6] dark:bg-[#2a2a32] text-[#6d6a5c] dark:text-[#a2e2d8] px-4 py-2 rounded-lg border border-[#e6e1d5] dark:border-[#323237] ${
+                refreshing 
+                  ? "opacity-50 cursor-not-allowed" 
+                  : "hover:bg-[#e9e4d9] dark:hover:bg-[#323237]"
+              }`}
+            >
+              {refreshing ? "刷新中..." : "刷新缓存"}
+            </button>
+          </div>
+          
+          {dirPath && (
             <div className="mb-4 p-3 bg-[#f7f5f0] dark:bg-[#262630] rounded-lg border border-[#e6e1d5] dark:border-[#323237]">
               <p className="text-sm text-[#6d6a5c] dark:text-[#a2e2d8] mb-1">名人日记目录路径:</p>
               <code className="block text-xs p-2 bg-white dark:bg-[#1a1a1e] rounded border border-[#e6e1d5] dark:border-[#323237] overflow-x-auto">
@@ -116,6 +153,7 @@ export function SettingsPage() {
               </code>
               <p className="text-xs mt-2 text-[#6d6a5c] dark:text-[#8c8c84]">
                 请将您的JSON文件放在此目录中，应用将自动加载它们。
+                添加或更新文件后请点击"刷新缓存"按钮使其生效。
               </p>
               <button
                 onClick={() => setDirPath(null)}
@@ -124,13 +162,6 @@ export function SettingsPage() {
                 隐藏路径
               </button>
             </div>
-          ) : (
-            <button
-              onClick={showCommonDiariesDir}
-              className="bg-[#f0ede6] dark:bg-[#2a2a32] text-[#6d6a5c] dark:text-[#a2e2d8] px-4 py-2 rounded-lg border border-[#e6e1d5] dark:border-[#323237] hover:bg-[#e9e4d9] dark:hover:bg-[#323237]"
-            >
-              查看名人日记目录
-            </button>
           )}
         </div>
         
