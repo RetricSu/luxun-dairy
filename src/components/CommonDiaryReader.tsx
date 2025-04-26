@@ -1,4 +1,4 @@
-import { useState, useEffect } from "preact/hooks";
+import { useState, useEffect, useMemo } from "preact/hooks";
 import { CommonDiary, CommonDiaryItem } from "../types";
 import { formatShortDate } from "../utils/helpers";
 
@@ -10,25 +10,115 @@ export function CommonDiaryReader({ diary }: CommonDiaryReaderProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 10; // 每页显示固定10条
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [filteredItems, setFilteredItems] = useState<CommonDiaryItem[]>([]);
+  const [showAllTags, setShowAllTags] = useState(false);
+  const [randomSeed, setRandomSeed] = useState<number | null>(null); // null表示不随机排序
   
-  // 当日记内容或搜索条件改变时，更新过滤后的条目
+  // 提取所有唯一标签
+  const allTags = useMemo(() => {
+    const tagsSet = new Set<string>();
+    
+    diary.items.forEach(item => {
+      if (item.tags && item.tags.length > 0) {
+        item.tags.forEach(tag => tagsSet.add(tag));
+      }
+    });
+    
+    // 转换为数组并按字母顺序排序
+    return Array.from(tagsSet).sort();
+  }, [diary.items]);
+  
+  // 当日记内容、搜索条件或选中标签改变时，更新过滤后的条目
   useEffect(() => {
-    if (!searchTerm.trim()) {
-      setFilteredItems(diary.items);
-    } else {
+    let results = diary.items;
+    
+    // 先按标签筛选 - 确保条目包含所有选中的标签
+    if (selectedTags.length > 0) {
+      results = results.filter(item => {
+        // 确保条目有标签
+        const itemTags = item.tags || [];
+        if (itemTags.length === 0) {
+          return false;
+        }
+        
+        // 检查条目是否包含所有选中的标签
+        return selectedTags.every(selectedTag => 
+          itemTags.includes(selectedTag)
+        );
+      });
+    }
+    
+    // 再按搜索词筛选
+    if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
-      const filtered = diary.items.filter(item => 
+      results = results.filter(item => 
         (item.title?.toLowerCase().includes(term) || false) ||
         item.content.toLowerCase().includes(term) ||
         (item.date_raw?.toLowerCase().includes(term) || false) ||
         (item.tags?.some(tag => tag.toLowerCase().includes(term)) || false)
       );
-      setFilteredItems(filtered);
     }
+    
+    // 应用随机排序
+    if (randomSeed !== null) {
+      // 使用Fisher-Yates洗牌算法随机排序
+      const shuffled = [...results];
+      
+      // 使用固定的随机种子确保分页时顺序一致
+      const random = seedRandom(randomSeed);
+      
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      
+      results = shuffled;
+    }
+    
+    setFilteredItems(results);
     // 重置到第一页
     setCurrentPage(0);
-  }, [diary.items, searchTerm]);
+  }, [diary.items, searchTerm, selectedTags, randomSeed]);
+
+  // 切换随机排序 - 每次点击都重新洗牌
+  const toggleRandom = () => {
+    setRandomSeed(randomSeed === null ? Date.now() : Date.now());
+  };
+  
+  // 清除随机排序
+  const clearRandom = () => {
+    setRandomSeed(null);
+  };
+  
+  // 简易伪随机数生成器（基于种子）
+  const seedRandom = (seed: number) => {
+    return () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+  };
+
+  // 处理标签点击 - 支持多选
+  const handleTagClick = (tag: string) => {
+    if (selectedTags.includes(tag)) {
+      // 如果标签已经被选中，则移除它
+      setSelectedTags(selectedTags.filter(t => t !== tag));
+    } else {
+      // 否则添加到已选标签中
+      setSelectedTags([...selectedTags, tag]);
+    }
+  };
+  
+  // 清除所有选中的标签
+  const clearTags = () => {
+    setSelectedTags([]);
+  };
+  
+  // 移除单个标签
+  const removeTag = (tag: string) => {
+    setSelectedTags(selectedTags.filter(t => t !== tag));
+  };
   
   const totalPages = Math.ceil(filteredItems.length / pageSize);
   
@@ -55,46 +145,197 @@ export function CommonDiaryReader({ diary }: CommonDiaryReaderProps) {
 
   return (
     <div className="py-6">
-      {/* 搜索框 */}
+      {/* 搜索区域 */}
       <div className="mb-6">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="搜索日记内容、标题、日期或标签..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.currentTarget.value)}
-            className="w-full px-4 py-2 pl-10 rounded-lg border border-[#e9e4d9] dark:border-[#2c2c32] bg-white dark:bg-[#1a1a1e] text-[#2c2c2a] dark:text-[#e9e9e7] focus:outline-none focus:ring-2 focus:ring-[#49b3a1] dark:focus:ring-[#43a595]"
-          />
-          <svg 
-            className="absolute left-3 top-2.5 h-5 w-5 text-[#8c7c67] dark:text-[#6c6c6c]" 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24" 
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth="2" 
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* 搜索框 */}
+          <div className="relative flex-grow">
+            <input
+              type="text"
+              placeholder="搜索日记内容、标题、日期或标签..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.currentTarget.value)}
+              className="text-sm w-full px-4 py-2 pl-10 rounded-lg border border-[#e9e4d9] dark:border-[#2c2c32] bg-white dark:bg-[#1a1a1e] text-[#2c2c2a] dark:text-[#e9e9e7] focus:outline-none focus:ring-2 focus:ring-[#49b3a1] dark:focus:ring-[#43a595]"
             />
-          </svg>
-        </div>
-      
-        {/* 搜索结果信息 */}
-        {searchTerm && (
-          <div className="mt-2 mb-4 text-sm text-[#8c7c67] dark:text-[#a6a69e]">
-            找到 {filteredItems.length} 条结果
-            {filteredItems.length > 0 && searchTerm && (
+            <svg 
+              className="absolute left-3 top-2.5 h-5 w-5 text-[#8c7c67] dark:text-[#6c6c6c]" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24" 
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth="2" 
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+          
+          <div className="flex flex-row gap-2">
+            {/* 随机排序按钮 */}
+            <div className="flex-shrink-0">
               <button 
-                onClick={() => setSearchTerm("")}
-                className="ml-2 text-[#49b3a1] dark:text-[#43a595] hover:underline"
+                onClick={toggleRandom}
+                className="text-sm flex items-center px-4 py-2 rounded-lg border border-[#e9e4d9] dark:border-[#2c2c32] bg-[#f7f5f0] dark:bg-[#262630] text-[#6d6a5c] dark:text-[#a6a69e] hover:bg-[#e9e4d9] dark:hover:bg-[#2c2c36] transition-colors"
               >
-                清除搜索
+                <svg 
+                  className="h-4 w-4 mr-1" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24" 
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth="2" 
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                随机
               </button>
+            </div>
+            
+            {/* 所有标签按钮 */}
+            {allTags.length > 0 && (
+              <div className="flex-shrink-0">
+                <button 
+                  onClick={() => setShowAllTags(!showAllTags)}
+                  className={`text-sm flex items-center px-4 py-2 rounded-lg border transition-colors
+                    ${showAllTags
+                      ? "bg-[#49b3a1] dark:bg-[#43a595] text-white border-[#49b3a1] dark:border-[#43a595]"
+                      : "bg-[#f7f5f0] dark:bg-[#262630] text-[#6d6a5c] dark:text-[#a6a69e] border-[#e9e4d9] dark:border-[#2c2c32] hover:bg-[#e9e4d9] dark:hover:bg-[#2c2c36]"
+                    }`}
+                >
+                  <svg 
+                    className="h-4 w-4 mr-1" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24" 
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth="2" 
+                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                    />
+                  </svg>
+                  {showAllTags ? "隐藏标签" : "全部标签"}
+                </button>
+              </div>
             )}
           </div>
+        </div>
+        
+        {/* 全部标签列表 */}
+        {showAllTags && allTags.length > 0 && (
+          <div className="mt-3 p-4 bg-[#f9f6f0] dark:bg-[#232328] rounded-lg border border-[#e9e4d9] dark:border-[#2c2c32]">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-medium text-[#49818b] dark:text-[#49818b]">
+                可用标签 ({allTags.length})
+              </h3>
+              {selectedTags.length > 0 && (
+                <button 
+                  onClick={clearTags}
+                  className="text-xs text-[#49b3a1] dark:text-[#43a595] hover:underline"
+                >
+                  清除所有已选
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {allTags.map((tag, index) => (
+                <button 
+                  key={index} 
+                  onClick={() => handleTagClick(tag)}
+                  className={`text-xs py-0.5 px-2 border rounded-full transition-colors ${
+                    selectedTags.includes(tag)
+                      ? "bg-[#49b3a1] dark:bg-[#43a595] text-white border-[#49b3a1] dark:border-[#43a595]" 
+                      : "bg-white dark:bg-[#1a1a1e] text-[#6d6a5c] dark:text-[#a2e2d8] border-[#e6e1d5] dark:border-[#323237] hover:bg-[#e9e4d9] dark:hover:bg-[#2c2c36]"
+                  }`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
+      
+        {/* 搜索结果信息和过滤状态 */}
+        <div className="mt-2 mb-4 text-sm text-[#8c7c67] dark:text-[#a6a69e]">
+          <div className="flex items-center flex-wrap gap-y-2">
+            {(searchTerm || selectedTags.length > 0 || randomSeed !== null) && (
+              <span>找到 {filteredItems.length} 条结果</span>
+            )}
+            
+            {(searchTerm || selectedTags.length > 0 || randomSeed !== null) && (
+              <button 
+                onClick={() => {
+                  setSearchTerm("");
+                  setSelectedTags([]);
+                  setRandomSeed(null);
+                }}
+                className="ml-2 text-[#49b3a1] dark:text-[#43a595] hover:underline"
+              >
+                重置
+              </button>
+            )}
+            
+            {randomSeed !== null && (
+              <span className="ml-2 flex items-center text-[#718328] dark:text-[#8da042]">
+                <svg 
+                  className="h-3.5 w-3.5 mr-1" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24" 
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth="2" 
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                随机排序已启用
+              </span>
+            )}
+          </div>
+          
+          {/* 显示选中的标签 */}
+          {selectedTags.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span>已筛选标签:</span>
+              {selectedTags.map((tag, index) => (
+                <span 
+                  key={index}
+                  className="bg-[#49b3a1] dark:bg-[#43a595] text-white text-xs py-0.5 px-2 rounded-full flex items-center"
+                >
+                  {tag}
+                  <button 
+                    onClick={() => removeTag(tag)} 
+                    className="ml-1 hover:text-gray-200"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </span>
+              ))}
+              {selectedTags.length > 1 && (
+                <button 
+                  onClick={clearTags}
+                  className="text-[#49b3a1] dark:text-[#43a595] hover:underline text-xs"
+                >
+                  清除所有标签
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       
       {/* 内容为空的提示 */}
@@ -136,16 +377,21 @@ export function CommonDiaryReader({ diary }: CommonDiaryReaderProps) {
               </div>
             </div>
             
-            {/* 标签显示 */}
+            {/* 可点击的标签显示 */}
             {entry.tags && entry.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2 sm:mt-0 ml-0 sm:ml-4">
                 {entry.tags.map((tag, i) => (
-                  <span 
+                  <button 
                     key={i} 
-                    className="bg-[#f7f5f0] dark:bg-[#262630] text-[#6d6a5c] dark:text-[#a2e2d8] text-xs py-0.5 px-2 border border-[#e6e1d5] dark:border-[#323237] rounded-full"
+                    onClick={() => handleTagClick(tag)}
+                    className={`text-xs py-0.5 px-2 border rounded-full transition-colors ${
+                      selectedTags.includes(tag)
+                        ? "bg-[#49b3a1] dark:bg-[#43a595] text-white border-[#49b3a1] dark:border-[#43a595]" 
+                        : "bg-[#f7f5f0] dark:bg-[#262630] text-[#6d6a5c] dark:text-[#a2e2d8] border-[#e6e1d5] dark:border-[#323237] hover:bg-[#e9e4d9] dark:hover:bg-[#2c2c36]"
+                    }`}
                   >
                     {tag}
-                  </span>
+                  </button>
                 ))}
               </div>
             )}
