@@ -16,6 +16,7 @@ export function SettingsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [cacheStatus, setCacheStatus] = useState<string>("");
   const [loadingStatus, setLoadingStatus] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     loadNostrPublicKey();
@@ -72,6 +73,23 @@ export function SettingsPage() {
       alert("刷新缓存失败");
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const downloadCommonDiaries = async () => {
+    if (downloading) return;
+    
+    setDownloading(true);
+    try {
+      await invoke("download_common_diaries", {});
+      // After downloading, update the cache status
+      await getCacheStatus();
+      alert("名人日记下载成功，可以访问'阅读'页面查看");
+    } catch (error) {
+      console.error("Failed to download common diaries:", error);
+      alert("下载名人日记失败");
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -160,6 +178,18 @@ export function SettingsPage() {
               }`}
             >
               {refreshing ? "刷新中..." : "重建缓存"}
+            </button>
+            
+            <button
+              onClick={downloadCommonDiaries}
+              disabled={downloading}
+              className={`bg-[#f0ede6] dark:bg-[#2a2a32] text-[#6d6a5c] dark:text-[#a2e2d8] px-4 py-2 rounded-lg border border-[#e6e1d5] dark:border-[#323237] ${
+                downloading 
+                  ? "opacity-50 cursor-not-allowed" 
+                  : "hover:bg-[#e9e4d9] dark:hover:bg-[#323237]"
+              }`}
+            >
+              {downloading ? "下载中..." : "下载名人日记"}
             </button>
           </div>
           

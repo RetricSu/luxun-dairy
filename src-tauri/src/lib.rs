@@ -13,6 +13,8 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use tauri::State;
 use uuid::Uuid;
+// Additional imports for GitHub API access
+use reqwest;
 
 fn get_data_dir() -> PathBuf {
     let proj_dirs =
@@ -756,6 +758,62 @@ fn get_common_diaries_cache_status() -> Result<String, String> {
     Ok(status)
 }
 
+#[tauri::command]
+async fn download_common_diaries() -> Result<(), String> {
+    println!("Downloading common diaries from GitHub");
+    
+    // 获取名人日记目录
+    let target_dir = get_common_diaries_dir();
+    
+    // 从GitHub原始内容URL下载文件
+    let base_url = "https://raw.githubusercontent.com/RetricSu/luxun-dairy/master/common-diary";
+    let diaries = ["luxun_common_diary.json", "dongpo_zhilin_common_diary.json", "xuxiake_travel_common_diary.json"];
+    
+    // 下载每个文件
+    for diary_name in diaries.iter() {
+        let file_url = format!("{}/{}", base_url, diary_name);
+        println!("Downloading {}", file_url);
+        
+        // 创建目标文件路径
+        let target_path = target_dir.join(diary_name);
+        
+        // 下载文件
+        match download_file(&file_url, &target_path).await {
+            Ok(_) => println!("Successfully downloaded {}", diary_name),
+            Err(e) => println!("Failed to download {}: {}", diary_name, e),
+        }
+    }
+    
+    // 刷新缓存
+    refresh_common_diaries_cache()?;
+    
+    println!("Common diaries downloaded successfully");
+    Ok(())
+}
+
+// 辅助函数：下载单个文件
+async fn download_file(url: &str, target_path: &PathBuf) -> Result<(), String> {
+    // 获取文件内容
+    let response = reqwest::get(url)
+        .await
+        .map_err(|e| format!("Failed to download file: {}", e))?;
+    
+    if !response.status().is_success() {
+        return Err(format!("Failed to download file, status: {}", response.status()));
+    }
+    
+    let content = response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read response content: {}", e))?;
+    
+    // 保存文件
+    std::fs::write(target_path, content)
+        .map_err(|e| format!("Failed to save file: {}", e))?;
+    
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     println!("Starting Lu Xun's Diary application");
@@ -771,6 +829,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_http::init())
         .manage(diary_store)
         .invoke_handler(tauri::generate_handler![
             greet,
@@ -783,7 +842,8 @@ pub fn run() {
             list_common_diaries,
             get_common_diaries_dir_path,
             refresh_common_diaries_cache,
-            get_common_diaries_cache_status
+            get_common_diaries_cache_status,
+            download_common_diaries,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
