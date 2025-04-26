@@ -52,3 +52,17 @@ struct CommonDiaryItem {
 }
 ```
 
+## 使用方法
+
+本应用支持从外部 JSON 文件加载著名日记（如鲁迅日记）。这种方法允许您在不重新构建应用程序的情况下添加新的日记，使应用程序更加灵活，并保持应用程序体积较小。
+
+## 如何添加 Common Diaries
+
+1. 根据 Common Diary 格式（见上文）格式化您的日记数据
+2. 将文件保存为 JSON 文件（例如 `luxun-diary.json`）
+3. 将文件放置在 Common Diaries 目录中：
+   - **Windows**: `%APPDATA%\com.luxun.diary\common_diaries\`
+   - **macOS**: `~/Library/Application Support/com.luxun.diary/common_diaries/`
+   - **Linux**: `~/.local/share/com.luxun.diary/common_diaries/`
+
+本应用会自动检测并加载此目录中的所有 JSON 文件。

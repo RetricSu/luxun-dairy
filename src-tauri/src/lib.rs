@@ -33,6 +33,14 @@ fn get_nostr_keys_file_path() -> PathBuf {
     get_data_dir().join("nostr_keys.json")
 }
 
+fn get_common_diaries_dir() -> PathBuf {
+    let data_dir = get_data_dir();
+    let common_diaries_dir = data_dir.join("common_diaries");
+    fs::create_dir_all(&common_diaries_dir).expect("Failed to create common diaries directory");
+    println!("Common diaries directory: {}", common_diaries_dir.display());
+    common_diaries_dir
+}
+
 fn setup_db() -> SqlResult<Connection> {
     let db_path = get_db_path();
     println!("Database path: {}", db_path.display());
@@ -409,6 +417,92 @@ fn verify_nostr_signature(nostr_id: String) -> Result<bool, String> {
     }
 }
 
+// Common Diary structures based on the format specification
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CommonDiaryItem {
+    title: Option<String>,
+    content: String,
+    iso_date: Option<String>,
+    date_raw: Option<String>,
+    weather: Option<String>,
+    tags: Option<Vec<String>>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CommonDiary {
+    author: String,
+    title: Option<String>,
+    count: u32,
+    items: Vec<CommonDiaryItem>,
+}
+
+// Function to list all common diary files
+fn list_common_diary_files() -> Result<Vec<PathBuf>, String> {
+    let common_diaries_dir = get_common_diaries_dir();
+    
+    match fs::read_dir(&common_diaries_dir) {
+        Ok(entries) => {
+            let files: Vec<PathBuf> = entries
+                .filter_map(|entry| {
+                    if let Ok(entry) = entry {
+                        let path = entry.path();
+                        if path.is_file() && path.extension().and_then(|ext| ext.to_str()) == Some("json") {
+                            Some(path)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            Ok(files)
+        },
+        Err(e) => Err(format!("Failed to read common diaries directory: {}", e)),
+    }
+}
+
+// Function to load a common diary from a file
+fn load_common_diary(file_path: &PathBuf) -> Result<CommonDiary, String> {
+    let mut file = match File::open(file_path) {
+        Ok(file) => file,
+        Err(e) => return Err(format!("Failed to open common diary file: {}", e)),
+    };
+
+    let mut contents = String::new();
+    if let Err(e) = file.read_to_string(&mut contents) {
+        return Err(format!("Failed to read common diary file: {}", e));
+    }
+
+    match serde_json::from_str::<CommonDiary>(&contents) {
+        Ok(diary) => Ok(diary),
+        Err(e) => Err(format!("Failed to parse common diary file: {}", e)),
+    }
+}
+
+// Function to list all available common diaries
+#[tauri::command]
+fn list_common_diaries() -> Result<Vec<CommonDiary>, String> {
+    let files = list_common_diary_files()?;
+    
+    let mut diaries = Vec::new();
+    for file_path in files {
+        match load_common_diary(&file_path) {
+            Ok(diary) => diaries.push(diary),
+            Err(e) => println!("Failed to load common diary from {}: {}", file_path.display(), e),
+        }
+    }
+    
+    Ok(diaries)
+}
+
+// Function to get the common diaries directory path as a string
+#[tauri::command]
+fn get_common_diaries_dir_path() -> String {
+    let dir = get_common_diaries_dir();
+    dir.to_string_lossy().to_string()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     println!("Starting Lu Xun's Diary application");
@@ -432,7 +526,9 @@ pub fn run() {
             get_nostr_event,
             get_nostr_public_key,
             check_day_has_entry,
-            verify_nostr_signature
+            verify_nostr_signature,
+            list_common_diaries,
+            get_common_diaries_dir_path
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

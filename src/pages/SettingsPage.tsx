@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import * as diaryService from "../utils/diaryService";
 import { shortenKey } from "../utils/helpers";
 import { useTheme } from "../contexts/ThemeContext";
+import { invoke } from "@tauri-apps/api/core";
 
 export function SettingsPage() {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ export function SettingsPage() {
   const [selectedDay, setSelectedDay] = useState<string>(
     new Date().toLocaleDateString('en-CA')
   );
+  const [dirPath, setDirPath] = useState<string | null>(null);
 
   useEffect(() => {
     loadNostrPublicKey();
@@ -30,14 +32,20 @@ export function SettingsPage() {
     setSelectedDay(target.value);
   }
 
-  // 主题切换处理函数
+  const showCommonDiariesDir = async () => {
+    try {
+      const path = await invoke<string>("get_common_diaries_dir_path");
+      setDirPath(path);
+    } catch (error) {
+      console.error("Failed to get common diaries directory:", error);
+    }
+  };
+
   function handleThemeChange(newTheme: "light" | "dark" | "system") {
     console.log("切换主题为:", newTheme);
     
-    // 使用Context API切换主题
     setTheme(newTheme);
     
-    // 同时也直接更新DOM，以防Context API不工作
     const root = document.documentElement;
     root.classList.remove("light", "dark");
     
@@ -92,6 +100,38 @@ export function SettingsPage() {
               {nostrPublicKey ? shortenKey(nostrPublicKey) : "未设置 Nostr 公钥"}
             </div>
           </div>
+        </div>
+        
+        <div className="mb-8">
+          <h2 className="text-xl font-medium mb-4 text-[#42403a] dark:text-[#e6e1d5]">名人日记</h2>
+          <p className="text-sm mb-4 text-[#6d6a5c] dark:text-[#a2e2d8]">
+            您可以添加格式化的名人日记 JSON 文件至指定目录，系统会自动加载它们。
+          </p>
+          
+          {dirPath ? (
+            <div className="mb-4 p-3 bg-[#f7f5f0] dark:bg-[#262630] rounded-lg border border-[#e6e1d5] dark:border-[#323237]">
+              <p className="text-sm text-[#6d6a5c] dark:text-[#a2e2d8] mb-1">名人日记目录路径:</p>
+              <code className="block text-xs p-2 bg-white dark:bg-[#1a1a1e] rounded border border-[#e6e1d5] dark:border-[#323237] overflow-x-auto">
+                {dirPath}
+              </code>
+              <p className="text-xs mt-2 text-[#6d6a5c] dark:text-[#8c8c84]">
+                请将您的JSON文件放在此目录中，应用将自动加载它们。
+              </p>
+              <button
+                onClick={() => setDirPath(null)}
+                className="mt-2 text-xs text-[#49b3a1] dark:text-[#43a595] hover:underline"
+              >
+                隐藏路径
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={showCommonDiariesDir}
+              className="bg-[#f0ede6] dark:bg-[#2a2a32] text-[#6d6a5c] dark:text-[#a2e2d8] px-4 py-2 rounded-lg border border-[#e6e1d5] dark:border-[#323237] hover:bg-[#e9e4d9] dark:hover:bg-[#323237]"
+            >
+              查看名人日记目录
+            </button>
+          )}
         </div>
         
         <div className="mb-8">
