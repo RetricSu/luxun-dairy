@@ -21,6 +21,7 @@ export function ReadPage() {
   const [commonDiaries, setCommonDiaries] = useState<CommonDiary[]>([]);
   const [activeTab, setActiveTab] = useState<string>("my-diary");
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingSource, setLoadingSource] = useState<string>("");
 
   useEffect(() => {
     loadEntries();
@@ -38,11 +39,32 @@ export function ReadPage() {
 
   async function loadCommonDiaries() {
     setIsLoading(true);
+    setLoadingSource("");
     try {
+      // 记录开始时间，以便计算加载时间
+      const startTime = performance.now();
+      
+      // 调用获取日记的接口
       const diariesData = await diaryService.loadCommonDiaries();
+      
+      // 计算加载时间
+      const endTime = performance.now();
+      const loadTime = Math.round(endTime - startTime);
+      
+      // 设置数据和加载信息
       setCommonDiaries(diariesData);
+      
+      // 根据加载速度推测是否使用了缓存
+      if (loadTime < 100 && diariesData.length > 0) {
+        setLoadingSource(`${diariesData.length} 篇日记已从缓存加载 (${loadTime}ms)`);
+      } else if (diariesData.length > 0) {
+        setLoadingSource(`${diariesData.length} 篇日记已加载 (${loadTime}ms)`);
+      } else {
+        setLoadingSource("没有找到日记文件");
+      }
     } catch (error) {
       console.error("Failed to load common diaries:", error);
+      setLoadingSource("加载日记失败");
     } finally {
       setIsLoading(false);
     }
@@ -101,6 +123,18 @@ export function ReadPage() {
             </button>
           ))}
         </div>
+        
+        {/* Loading info */}
+        {loadingSource && !isLoading && activeTab !== "my-diary" && (
+          <div className="flex items-center px-1 py-1 mt-1 mb-1">
+            <span className="text-xs text-[#8c7c67] dark:text-[#a6a69e] flex items-center">
+              <svg className="h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {loadingSource}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="mt-6">

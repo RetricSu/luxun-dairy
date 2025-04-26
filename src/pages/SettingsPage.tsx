@@ -14,9 +14,12 @@ export function SettingsPage() {
   );
   const [dirPath, setDirPath] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [cacheStatus, setCacheStatus] = useState<string>("");
+  const [loadingStatus, setLoadingStatus] = useState(false);
 
   useEffect(() => {
     loadNostrPublicKey();
+    getCacheStatus();
   }, []);
 
   async function loadNostrPublicKey() {
@@ -25,6 +28,19 @@ export function SettingsPage() {
       setNostrPublicKey(publicKey);
     } catch (error) {
       console.error("Failed to load Nostr public key:", error);
+    }
+  }
+
+  async function getCacheStatus() {
+    setLoadingStatus(true);
+    try {
+      const status = await diaryService.getCommonDiariesCacheStatus();
+      setCacheStatus(status);
+    } catch (error) {
+      console.error("Failed to get cache status:", error);
+      setCacheStatus("获取缓存状态失败");
+    } finally {
+      setLoadingStatus(false);
     }
   }
 
@@ -48,7 +64,9 @@ export function SettingsPage() {
     setRefreshing(true);
     try {
       await diaryService.refreshCommonDiariesCache();
-      alert("公共日记缓存已刷新");
+      // After refreshing, update the cache status
+      await getCacheStatus();
+      alert("公共日记缓存已重建，可以访问'阅读'页面查看更新");
     } catch (error) {
       console.error("Failed to refresh common diaries cache:", error);
       alert("刷新缓存失败");
@@ -141,8 +159,26 @@ export function SettingsPage() {
                   : "hover:bg-[#e9e4d9] dark:hover:bg-[#323237]"
               }`}
             >
-              {refreshing ? "刷新中..." : "刷新缓存"}
+              {refreshing ? "刷新中..." : "重建缓存"}
             </button>
+          </div>
+          
+          <div className="mb-4 p-4 bg-[#f7f5f0] dark:bg-[#262630] rounded-lg border border-[#e6e1d5] dark:border-[#323237]">
+            <div className="flex items-center mb-2">
+              <svg className="h-5 w-5 mr-2 text-[#49b3a1] dark:text-[#43a595]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <p className="text-sm font-medium text-[#6d6a5c] dark:text-[#a2e2d8]">
+                缓存状态
+                {loadingStatus && <span className="ml-2 text-xs italic opacity-70">更新中...</span>}
+              </p>
+            </div>
+            <p className="text-sm py-2 px-3 bg-white dark:bg-[#1a1a1e] rounded border border-[#e6e1d5] dark:border-[#323237]">
+              {loadingStatus ? "正在获取缓存状态..." : cacheStatus || "暂无缓存信息"}
+            </p>
+            <p className="text-xs mt-2 text-[#8c7c67] dark:text-[#8c8c84]">
+              * 缓存可提高应用性能，减少文件加载时间。添加或修改日记文件后，请重建缓存。
+            </p>
           </div>
           
           {dirPath && (

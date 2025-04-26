@@ -102,4 +102,13 @@ export async function refreshCommonDiariesCache(): Promise<void> {
     console.error("Failed to refresh common diaries cache:", error);
     throw error;
   }
+}
+
+export async function getCommonDiariesCacheStatus(): Promise<string> {
+  try {
+    return await invoke<string>("get_common_diaries_cache_status");
+  } catch (error) {
+    console.error("Failed to get common diaries cache status:", error);
+    throw error;
+  }
 } 

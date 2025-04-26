@@ -1,6 +1,6 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use ::hex;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use directories::ProjectDirs;
 use nostr_sdk::{Event, EventBuilder, Keys, Kind, SecretKey, Tag};
 use once_cell::sync::Lazy;
@@ -13,9 +13,6 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use tauri::State;
 use uuid::Uuid;
-
-// In-memory cache of loaded common diaries
-static DIARY_CACHE: Lazy<Mutex<Option<Vec<CommonDiary>>>> = Lazy::new(|| Mutex::new(None));
 
 fn get_data_dir() -> PathBuf {
     let proj_dirs =
@@ -60,6 +57,16 @@ fn setup_db() -> SqlResult<Connection> {
             nostr_id TEXT UNIQUE,
             day TEXT UNIQUE,
             nostr_event TEXT
+        )",
+        [],
+    )?;
+
+    // Create the common diaries cache table
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS common_diaries_cache (
+            author TEXT PRIMARY KEY,
+            data TEXT NOT NULL,
+            last_modified TEXT NOT NULL
         )",
         [],
     )?;
@@ -483,34 +490,170 @@ fn load_common_diary(file_path: &PathBuf) -> Result<CommonDiary, String> {
     }
 }
 
+// Function to save a common diary to cache
+fn save_common_diary_to_cache(diary: &CommonDiary) -> SqlResult<()> {
+    let conn = DB_CONNECTION.lock().unwrap();
+    let data = serde_json::to_string(&diary).unwrap();
+    let now = Utc::now().to_rfc3339();
+    
+    conn.execute(
+        "INSERT OR REPLACE INTO common_diaries_cache (author, data, last_modified) VALUES (?1, ?2, ?3)",
+        params![diary.author, data, now]
+    )?;
+    
+    println!("Saved diary with author '{}' to cache", diary.author);
+    Ok(())
+}
+
+// Function to load all common diaries from cache
+fn load_all_common_diaries_from_cache() -> SqlResult<Vec<CommonDiary>> {
+    let conn = DB_CONNECTION.lock().unwrap();
+    let mut stmt = conn.prepare("SELECT data FROM common_diaries_cache")?;
+    
+    let diaries_iter = stmt.query_map([], |row| {
+        let data: String = row.get(0)?;
+        match serde_json::from_str::<CommonDiary>(&data) {
+            Ok(diary) => Ok(diary),
+            Err(e) => {
+                println!("Error parsing cached diary: {}", e);
+                Err(rusqlite::Error::InvalidQuery)
+            }
+        }
+    })?;
+    
+    let mut diaries = Vec::new();
+    for diary_result in diaries_iter {
+        match diary_result {
+            Ok(diary) => diaries.push(diary),
+            Err(e) => println!("Error retrieving diary from cache: {}", e),
+        }
+    }
+    
+    println!("Loaded {} diaries from cache", diaries.len());
+    Ok(diaries)
+}
+
+// Function to check if cache is up to date by comparing file modification times
+fn is_cache_up_to_date() -> bool {
+    // Get list of diary files
+    match list_common_diary_files() {
+        Ok(files) => {
+            // Check if we have any files at all
+            if files.is_empty() {
+                return true; // No files to process, cache is "up to date"
+            }
+            
+            // Store the file count for later
+            let file_count = files.len();
+            
+            // Get the latest modification time from the database
+            let conn = DB_CONNECTION.lock().unwrap();
+            let latest_mod_time: Result<Option<String>, rusqlite::Error> = conn.query_row(
+                "SELECT MAX(last_modified) FROM common_diaries_cache",
+                [],
+                |row| row.get(0)
+            );
+            
+            // If we don't have any cached entries, cache is not up to date
+            let latest_mod_time = match latest_mod_time {
+                Ok(Some(time)) => time,
+                _ => return false,
+            };
+            
+            // Parse the time
+            let cache_time = match DateTime::parse_from_rfc3339(&latest_mod_time) {
+                Ok(time) => time.with_timezone(&Utc),
+                Err(_) => return false,
+            };
+            
+            // Check if any file is newer than our cache
+            for file_path in files {
+                if let Ok(metadata) = fs::metadata(&file_path) {
+                    if let Ok(modified) = metadata.modified() {
+                        if let Ok(file_time) = modified.duration_since(std::time::UNIX_EPOCH) {
+                            let file_datetime = Utc.timestamp_opt(
+                                file_time.as_secs() as i64, 
+                                file_time.subsec_nanos()
+                            ).unwrap();
+                            
+                            // If file is newer than cache, cache is not up to date
+                            if file_datetime > cache_time {
+                                println!("File {} is newer than cache", file_path.display());
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Also check if we have the same number of diaries in cache as files
+            let count: i64 = match conn.query_row(
+                "SELECT COUNT(*) FROM common_diaries_cache",
+                [],
+                |row| row.get(0)
+            ) {
+                Ok(count) => count,
+                Err(_) => return false,
+            };
+            
+            if count as usize != file_count {
+                println!("Number of cached diaries ({}) differs from number of files ({})", count, file_count);
+                return false;
+            }
+            
+            true
+        },
+        Err(e) => {
+            println!("Error listing diary files: {}", e);
+            false
+        }
+    }
+}
+
+// Function to clear the common diaries cache
+fn clear_common_diaries_cache() -> SqlResult<()> {
+    let conn = DB_CONNECTION.lock().unwrap();
+    conn.execute("DELETE FROM common_diaries_cache", [])?;
+    println!("Common diaries cache cleared");
+    Ok(())
+}
+
 // Function to list all available common diaries
 #[tauri::command]
 fn list_common_diaries() -> Result<Vec<CommonDiary>, String> {
-    // Try to get cached diaries
-    let mut cache = DIARY_CACHE.lock().unwrap();
-    
-    // Return cached data if available
-    if let Some(diaries) = cache.as_ref() {
-        println!("Returning {} common diaries from cache", diaries.len());
-        return Ok(diaries.clone());
+    // First check if our cache is up to date
+    if is_cache_up_to_date() {
+        // Try to load from cache
+        match load_all_common_diaries_from_cache() {
+            Ok(diaries) if !diaries.is_empty() => {
+                println!("Returning {} common diaries from SQLite cache", diaries.len());
+                return Ok(diaries);
+            }
+            _ => {
+                println!("Cache check indicated up-to-date but got empty result, reloading from files");
+            }
+        }
     }
     
-    // Otherwise load from files
+    // If cache is not up to date or got empty results, load from files
     println!("Loading common diaries from files");
     let files = list_common_diary_files()?;
     
     let mut diaries = Vec::new();
     for file_path in files {
         match load_common_diary(&file_path) {
-            Ok(diary) => diaries.push(diary),
+            Ok(diary) => {
+                // Save to cache
+                if let Err(e) = save_common_diary_to_cache(&diary) {
+                    println!("Failed to save diary to cache: {}", e);
+                }
+                diaries.push(diary);
+            }
             Err(e) => println!("Failed to load common diary from {}: {}", file_path.display(), e),
         }
     }
     
-    // Update cache
-    println!("Caching {} common diaries", diaries.len());
-    *cache = Some(diaries.clone());
-    
+    println!("Loaded and cached {} common diaries from files", diaries.len());
     Ok(diaries)
 }
 
@@ -525,9 +668,92 @@ fn get_common_diaries_dir_path() -> String {
 #[tauri::command]
 fn refresh_common_diaries_cache() -> Result<(), String> {
     println!("Refreshing common diaries cache");
-    let mut cache = DIARY_CACHE.lock().unwrap();
-    *cache = None;
+    
+    // Clear existing cache
+    match clear_common_diaries_cache() {
+        Ok(_) => (),
+        Err(e) => return Err(format!("Failed to clear common diaries cache: {}", e)),
+    }
+    
+    // Reload files and rebuild cache
+    println!("Reloading common diaries from files");
+    let files = list_common_diary_files()?;
+    
+    let mut diary_count = 0;
+    for file_path in files {
+        match load_common_diary(&file_path) {
+            Ok(diary) => {
+                // Save to cache
+                if let Err(e) = save_common_diary_to_cache(&diary) {
+                    println!("Failed to save diary to cache: {}", e);
+                } else {
+                    diary_count += 1;
+                }
+            }
+            Err(e) => println!("Failed to load common diary from {}: {}", file_path.display(), e),
+        }
+    }
+    
+    println!("Refreshed cache with {} common diaries from files", diary_count);
     Ok(())
+}
+
+#[tauri::command]
+fn get_common_diaries_cache_status() -> Result<String, String> {
+    let conn = DB_CONNECTION.lock().unwrap();
+    
+    // Count the number of cached diaries
+    let count: i64 = match conn.query_row(
+        "SELECT COUNT(*) FROM common_diaries_cache",
+        [],
+        |row| row.get(0)
+    ) {
+        Ok(count) => count,
+        Err(e) => return Err(format!("Failed to count cached diaries: {}", e)),
+    };
+    
+    // Get the latest modification time
+    let latest_mod_time: Result<Option<String>, rusqlite::Error> = conn.query_row(
+        "SELECT MAX(last_modified) FROM common_diaries_cache",
+        [],
+        |row| row.get(0)
+    );
+    
+    let latest_mod_time = match latest_mod_time {
+        Ok(Some(time)) => {
+            // Parse the full timestamp into a more readable format
+            match DateTime::parse_from_rfc3339(&time) {
+                Ok(dt) => dt.format("%Y-%m-%d %H:%M:%S").to_string(),
+                Err(_) => time
+            }
+        },
+        Ok(None) => "未缓存".to_string(),
+        Err(e) => return Err(format!("Failed to get latest modification time: {}", e)),
+    };
+    
+    // Count the actual files in directory for comparison
+    let file_count = match list_common_diary_files() {
+        Ok(files) => files.len() as i64,
+        Err(_) => -1,
+    };
+    
+    // Create a more informative status message
+    let status = if count == 0 {
+        if file_count > 0 {
+            format!("有 {} 个日记文件需要缓存，但当前缓存为空", file_count)
+        } else if file_count == 0 {
+            "日记目录中没有文件，缓存为空".to_string()
+        } else {
+            "缓存为空，无法读取日记目录".to_string()
+        }
+    } else if count == file_count {
+        format!("缓存完整：已缓存 {} 个日记文件，最后更新于 {}", count, latest_mod_time)
+    } else {
+        format!("缓存不完整：已缓存 {} 个日记文件，目录中有 {} 个文件，最后更新于 {}", 
+               count, file_count, latest_mod_time)
+    };
+    
+    Ok(status)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -556,7 +782,8 @@ pub fn run() {
             verify_nostr_signature,
             list_common_diaries,
             get_common_diaries_dir_path,
-            refresh_common_diaries_cache
+            refresh_common_diaries_cache,
+            get_common_diaries_cache_status
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
