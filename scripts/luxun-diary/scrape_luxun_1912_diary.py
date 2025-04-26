@@ -79,46 +79,67 @@ def scrape_luxun_diary():
     
     print(f"Found {len(all_entries)} total diary entries")
     
-    # Manually assign entries to months based on knowledge from the file
-    # The diary covers from May to December 1912
-    month_boundaries = [
-        # (start_idx, end_idx, month_name, month_number)
-        (0, 31, "五月", 5),
-        (32, 59, "六月", 6),
-        (60, 85, "七月", 7),
-        (86, 110, "八月", 8),
-        (111, 140, "九月", 9),
-        (141, 183, "十月", 10),
-        (184, 204, "十一月", 11),
-        (205, 236, "十二月", 12)  # Updated to include all remaining entries
-    ]
-    
-    # Process entries with correct month assignment
+    # Instead of fixed index ranges, let's try to detect month transitions by looking at the day numbers
     all_diary_items = []
+    entry_index_by_date = {}
+    
+    # First, convert all days to numbers
+    day_numbers = []
+    for idx, (day, _) in enumerate(all_entries):
+        day_numbers.append(convert_day_to_number(day))
+    
+    # Detect month transitions by looking for sequences like 30->1, 31->1, or decreasing day numbers
+    current_month = 5  # Start with May
+    current_month_name = "五月"
+    month_changes = []
+    
+    # Create a mapping for month names
+    month_names = {
+        5: "五月", 6: "六月", 7: "七月", 8: "八月", 
+        9: "九月", 10: "十月", 11: "十一月", 12: "十二月"
+    }
+    
+    for i in range(1, len(day_numbers)):
+        prev_day = day_numbers[i-1]
+        current_day = day_numbers[i]
+        
+        # If current day is much smaller than previous day, it likely indicates a month change
+        if (prev_day >= 28 and current_day <= 3) or (prev_day - current_day > 15):
+            month_changes.append(i)
+            current_month += 1
+            if current_month > 12:
+                current_month = 1  # Wrap around to January if needed
+    
+    # Assign months based on detected transitions
+    current_month = 5  # Start with May
+    change_idx = 0
     
     for idx, (day, content) in enumerate(all_entries):
-        # Find which month this entry belongs to
-        current_month = None
-        current_month_num = None
+        # Check if we need to change months
+        if change_idx < len(month_changes) and idx == month_changes[change_idx]:
+            current_month += 1
+            change_idx += 1
+            print(f"Month change detected at entry {idx}: now {month_names[current_month]}")
         
-        for start_idx, end_idx, month_name, month_num in month_boundaries:
-            if start_idx <= idx <= end_idx:
-                current_month = month_name
-                current_month_num = month_num
-                break
-        
-        if not current_month:
-            print(f"WARNING: Could not determine month for entry {idx}: {day}")
-            continue
-        
-        # Convert day to number
         day_num = convert_day_to_number(day)
         
+        # Validate day number for the month
+        max_days = get_max_days_in_month(current_month)
+        if day_num > max_days:
+            print(f"WARNING: Invalid day {day_num} for month {month_names[current_month]} in entry {idx}")
+            day_num = max_days  # Use the last day of the month as fallback
+        
         # Create ISO date
-        iso_date = f"1912-{current_month_num:02d}-{day_num:02d}"
+        iso_date = f"1912-{current_month:02d}-{day_num:02d}"
+        
+        # Store entry index by date for debugging duplicates
+        if iso_date in entry_index_by_date:
+            entry_index_by_date[iso_date].append(idx)
+        else:
+            entry_index_by_date[iso_date] = [idx]
         
         # Create raw date
-        date_raw = f"一九一二年{current_month}{day}"
+        date_raw = f"一九一二年{month_names[current_month]}{day}"
         
         # Extract weather if present
         weather = extract_weather(content)
@@ -134,6 +155,16 @@ def scrape_luxun_diary():
         all_diary_items.append(diary_item)
     
     print(f"Successfully processed {len(all_diary_items)} diary entries")
+    
+    # Check for duplicate dates with improved debugging info
+    iso_dates = {}
+    for item in all_diary_items:
+        if item.iso_date in iso_dates:
+            indices = entry_index_by_date[item.iso_date]
+            print(f"WARNING: Duplicate date found: {item.iso_date}, at indices {indices}")
+            iso_dates[item.iso_date].append(item.content[:50] + "...")  # Show beginning of content
+        else:
+            iso_dates[item.iso_date] = [item.content[:50] + "..."]
     
     # Group entries by month for reporting
     months_count = {}
@@ -168,6 +199,14 @@ def convert_day_to_number(day_text):
     # Return the number or default to 1
     return numeral_map.get(day_text, 1)
 
+def get_max_days_in_month(month):
+    """Get the maximum number of days in a month for 1912 (leap year)"""
+    days_in_month = {
+        1: 31, 2: 29, 3: 31, 4: 30, 5: 31, 6: 30,
+        7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31
+    }
+    return days_in_month.get(month, 30)  # Default to 30 if unknown
+
 def save_common_diary_json(items):
     """Save all entries as a single CommonDiary JSON file"""
     common_diary = {
@@ -191,10 +230,20 @@ def save_common_diary_json(items):
     individual_dir = "output/individual_entries"
     os.makedirs(individual_dir, exist_ok=True)
     
+    # Track which dates have been saved already
+    saved_dates = {}
+    
     for i, item in enumerate(items):
         # Create a filename with date if available, otherwise use index
         if item.iso_date:
-            filename = f"{individual_dir}/luxun_{item.iso_date}.json"
+            # Check if this date has already been saved
+            if item.iso_date in saved_dates:
+                saved_dates[item.iso_date] += 1
+                filename = f"{individual_dir}/luxun_{item.iso_date}_{saved_dates[item.iso_date]}.json"
+                print(f"Warning: Adding duplicate entry for date {item.iso_date}")
+            else:
+                saved_dates[item.iso_date] = 1
+                filename = f"{individual_dir}/luxun_{item.iso_date}.json"
         else:
             filename = f"{individual_dir}/luxun_entry_{i+1}.json"
         
