@@ -56,7 +56,7 @@ export function Modal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center px-4 py-6 bg-black bg-opacity-50">
+    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center px-4 py-6 bg-black bg-opacity-50 dark:bg-opacity-50">
       <div ref={modalRef} className={`w-full ${maxWidth} rounded-lg shadow-xl relative`}>
         {children}
       </div>

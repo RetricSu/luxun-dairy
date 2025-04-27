@@ -16,6 +16,9 @@ use uuid::Uuid;
 // Additional imports for GitHub API access
 use reqwest;
 
+// Add mod declaration for the gift wrap service
+pub mod gift_wrap_service;
+
 fn get_data_dir() -> PathBuf {
     let proj_dirs =
         ProjectDirs::from("com", "luxun", "diary").expect("Failed to get project directories");
@@ -844,6 +847,10 @@ pub fn run() {
             refresh_common_diaries_cache,
             get_common_diaries_cache_status,
             download_common_diaries,
+            // Add the new gift wrap service commands
+            gift_wrap_service::gift_wrap_diary,
+            gift_wrap_service::share_gift_wrap,
+            gift_wrap_service::validate_pubkey,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

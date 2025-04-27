@@ -2406,6 +2406,7 @@ dependencies = [
  "hex",
  "nostr-sdk",
  "once_cell",
+ "rand 0.8.5",
  "reqwest",
  "rusqlite",
  "serde",
