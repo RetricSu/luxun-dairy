@@ -1,4 +1,4 @@
-import { formatDayDisplay, isToday } from "../utils/helpers";
+import { isToday } from "../utils/helpers";
 
 interface DayHeaderProps {
   selectedDay: string;
