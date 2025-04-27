@@ -28,4 +28,16 @@ export interface CommonDiary {
   title?: string;
   count: number;
   items: CommonDiaryItem[];
+}
+
+export interface FriendDiaryEntry {
+  date: string;
+  content: string;
+  id: string;
+}
+
+export interface FriendDiary {
+  name: string;
+  pubkey: string;
+  entries: FriendDiaryEntry[];
 } 

@@ -8,6 +8,7 @@ import { DiaryEntry, CommonDiary } from "../types";
 import { Modal } from "../components/Modal";
 import { NostrEventViewer } from "../components/NostrEventViewer";
 import { CommonDiaryReader } from "../components/CommonDiaryReader";
+import { FriendDiaryReader } from "../components/FriendDiaryReader";
 
 export function ReadPage() {
   const navigate = useNavigate();
@@ -89,6 +90,10 @@ export function ReadPage() {
     setNostrEventData(null);
   }
 
+  function handleViewOriginal(entryId: string) {
+    viewNostrEvent(entryId);
+  }
+
   return (
     <main className="max-w-4xl mx-auto py-8 px-6 sm:px-10 min-h-screen bg-[#faf9f6] dark:bg-[#121214]">
       <Header 
@@ -109,6 +114,16 @@ export function ReadPage() {
           >
             我的日记
           </button>
+
+          <button 
+            className={`px-4 py-2 mr-2 whitespace-nowrap text-sm font-medium rounded-t-lg transition-colors
+              ${activeTab === "friend-diaries" 
+                ? "bg-white dark:bg-[#1a1a1e] text-[#49b3a1] dark:text-[#43a595] border-t border-l border-r border-[#e9e4d9] dark:border-[#2c2c32]" 
+                : "text-[#8c7c67] dark:text-[#a6a69e] hover:text-[#49b3a1] hover:dark:text-[#43a595]"}`}
+            onClick={() => setActiveTab("friend-diaries")}
+          >
+           收件箱 
+          </button>
           
           {commonDiaries.map((diary) => (
             <button 
@@ -125,7 +140,7 @@ export function ReadPage() {
         </div>
         
         {/* Loading info */}
-        {loadingSource && !isLoading && activeTab !== "my-diary" && (
+        {loadingSource && !isLoading && activeTab !== "my-diary" && activeTab !== "friend-diaries" && (
           <div className="flex items-center px-1 py-1 mt-1 mb-1">
             <span className="text-xs text-[#8c7c67] dark:text-[#a6a69e] flex items-center">
               <svg className="h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -149,6 +164,8 @@ export function ReadPage() {
             <MonthCalendar entries={entries} />
             <Timeline entries={entries} viewNostrEvent={viewNostrEvent} />
           </>
+        ) : activeTab === "friend-diaries" ? (
+          <FriendDiaryReader onViewOriginal={handleViewOriginal} />
         ) : (
           <div>
             <div className="mb-6 bg-[#f9f6f0] dark:bg-[#2a2a28] p-4 rounded-lg">
