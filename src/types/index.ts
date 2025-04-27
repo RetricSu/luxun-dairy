@@ -34,6 +34,7 @@ export interface FriendDiaryEntry {
   date: string;
   content: string;
   id: string;
+  weather?: string;
 }
 
 export interface FriendDiary {

@@ -1,6 +1,7 @@
 import { ComponentChildren } from "preact";
 import { useState, useEffect } from "preact/hooks";
 import { FriendDiary } from "../types";
+import { shortenKey } from "../utils/helpers";
 
 interface FriendDiaryReaderProps {
   onViewOriginal?: (entryId: string) => void;
@@ -29,12 +30,14 @@ export const FriendDiaryReader = ({
 		  {
 		    date: "2023-11-02",
 		    content: "今天天气很好，出去散步了一会儿。感觉心情好多了。",
-		    id: "note1"
+		    id: "note1",
+            weather: "晴"
 		  },
 		  {
 		    date: "2023-10-28",
 		    content: "周末参加了一个有趣的工作坊，认识了很多新朋友。",
-		    id: "note2"
+		    id: "note2",
+            weather: "多云"
 		  }
 		]
 	      },
@@ -45,7 +48,8 @@ export const FriendDiaryReader = ({
 		  {
 		    date: "2023-11-03",
 		    content: "新书到了，迫不及待地读了前三章。真是太精彩了！",
-		    id: "note3"
+		    id: "note3",
+            weather: "小雨"
 		  }
 		]
 	      }
@@ -120,42 +124,34 @@ export const FriendDiaryReader = ({
           <div className="w-3/4">
             {selectedFriendData ? (
               <div>
-                <div className="mb-4 pb-2 border-b border-[#e5e1d8] dark:border-[#323232]">
-                  <div className="flex items-center">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#49b3a1] to-[#3a9e8d] flex items-center justify-center text-white">
-                      {selectedFriendData.name.charAt(0)}
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="font-medium text-lg text-[#5a5955] dark:text-[#d1d1c9]">
-                        {selectedFriendData.name}
-                      </h3>
-                      <span className="text-xs text-[#8c7c67] dark:text-[#a6a69e]">
-                        {selectedFriendData.pubkey}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                
                 {selectedFriendData.entries.map((entry) => (
-                  <div key={entry.id} className="mb-6 pb-6 border-b border-[#e5e1d8] dark:border-[#323232] last:border-b-0">
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="text-md font-medium text-[#49b3a1] dark:text-[#43a595]">
+                  <div key={entry.id} className="mb-8 pb-6 bg-white dark:bg-[#1a1a1e] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 border border-[#e9e4d9] dark:border-[#2c2c32] p-5">
+                    <div className="flex items-center pb-3 mb-4 border-b border-[#e9e4d9] dark:border-[#2c2c32] text-sm">
+                      <span className="text-[#49818b] dark:text-[#49818b] font-medium mr-3">
                         {new Date(entry.date).toLocaleDateString('zh-CN', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric',
                         })}
                       </span>
-                      <button 
-                        className="text-xs text-[#8c7c67] dark:text-[#a6a69e] hover:text-[#49b3a1] hover:dark:text-[#43a595]"
-                        onClick={() => onViewOriginal && onViewOriginal(entry.id)}
-                      >
-                        查看 Event
-                      </button>
+                      <span className="text-[#718328] dark:text-[#d0e57e] font-medium">
+                        {entry.weather}
+                      </span>
+                      <span className="text-[#9c9b95] dark:text-[#717b7a] text-xs ml-auto flex items-center">
+                        <span className="hidden sm:inline">ID: {shortenKey(entry.id)}</span>
+                        <button 
+                          className="ml-2 bg-[#f7f5f0] dark:bg-[#262630] text-[#6d6a5c] dark:text-[#a2e2d8] text-xs py-0.5 px-2 border border-[#e6e1d5] dark:border-[#323237] rounded-full hover:bg-[#f0ede6] dark:hover:bg-[#2a2a32] transition-colors"
+                          onClick={() => onViewOriginal && onViewOriginal(entry.id)}
+                        >
+                          查看
+                        </button>
+                      </span>
                     </div>
-                    <p className="text-[#5a5955] dark:text-[#d1d1c9] whitespace-pre-wrap">
-                      {entry.content}
-                    </p>
+                    <div className="text-[#2c2c2a] dark:text-[#e9e9e7] leading-7 font-normal">
+                      {entry.content.split("\n").map((line, i) => (
+                        <p key={i} className="mb-2 last:mb-0">{line}</p>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
