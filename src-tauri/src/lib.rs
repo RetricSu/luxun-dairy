@@ -95,7 +95,7 @@ pub struct DiaryEntry {
 }
 
 #[derive(Default)]
-struct DiaryStore {
+pub struct DiaryStore {
     nostr_keys: Mutex<Option<Keys>>,
 }
 
