@@ -42,3 +42,27 @@ export interface FriendDiary {
   pubkey: string;
   entries: FriendDiaryEntry[];
 } 
+
+export interface UnwrappedGiftResponse {
+  sender_pubkey: string;
+  gift_wrap_event: string;
+}
+
+export interface UnwrappedGift {
+  sender_pubkey: string;
+  rumor: {
+    id: string;
+    pubkey: string;
+    created_at: string;
+    kind: number;
+    tags: string[][];
+    content: string;
+  };
+}
+
+export function toUnwrappedGift(unwrappedGiftResponse: UnwrappedGiftResponse): UnwrappedGift {
+  return {
+    sender_pubkey: unwrappedGiftResponse.sender_pubkey,
+    rumor: JSON.parse(unwrappedGiftResponse.gift_wrap_event),
+  };
+}

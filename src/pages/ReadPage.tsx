@@ -90,10 +90,6 @@ export function ReadPage() {
     setNostrEventData(null);
   }
 
-  function handleViewOriginal(entryId: string) {
-    viewNostrEvent(entryId);
-  }
-
   return (
     <main className="max-w-4xl mx-auto py-8 px-6 sm:px-10 min-h-screen bg-[#faf9f6] dark:bg-[#121214]">
       <Header 
@@ -116,13 +112,27 @@ export function ReadPage() {
           </button>
 
           <button 
-            className={`px-4 py-2 mr-2 whitespace-nowrap text-sm font-medium rounded-t-lg transition-colors
+            className={`px-4 py-2 mr-2 whitespace-nowrap text-sm font-medium rounded-t-lg transition-colors flex items-center
               ${activeTab === "friend-diaries" 
                 ? "bg-white dark:bg-[#1a1a1e] text-[#49b3a1] dark:text-[#43a595] border-t border-l border-r border-[#e9e4d9] dark:border-[#2c2c32]" 
                 : "text-[#8c7c67] dark:text-[#a6a69e] hover:text-[#49b3a1] hover:dark:text-[#43a595]"}`}
             onClick={() => setActiveTab("friend-diaries")}
           >
-           收件箱 
+            <svg 
+              className="w-4 h-4 mr-1" 
+              xmlns="http://www.w3.org/2000/svg" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" 
+              />
+            </svg>
+            收件箱 
           </button>
           
           {commonDiaries.map((diary) => (
@@ -153,7 +163,7 @@ export function ReadPage() {
             <Timeline entries={entries} viewNostrEvent={viewNostrEvent} />
           </>
         ) : activeTab === "friend-diaries" ? (
-          <FriendDiaryReader onViewOriginal={handleViewOriginal} />
+          <FriendDiaryReader />
         ) : (
           <div>
             {/* Loading info */}

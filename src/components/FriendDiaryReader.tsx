@@ -1,86 +1,100 @@
 import { ComponentChildren } from "preact";
 import { useState, useEffect } from "preact/hooks";
-import { FriendDiary } from "../types";
+import { FriendDiary, toUnwrappedGift } from "../types";
 import { shortenKey } from "../utils/helpers";
 import { fetchGiftWraps } from "../utils/diaryService";
+import { Modal } from "./Modal";
+import { NostrEventViewer } from "./NostrEventViewer";
 
-interface FriendDiaryReaderProps {
-  onViewOriginal?: (entryId: string) => void;
-}
-
-export const FriendDiaryReader = ({ 
-  onViewOriginal 
-}: FriendDiaryReaderProps): ComponentChildren => {
+export const FriendDiaryReader = (): ComponentChildren => {
   const [diaries, setDiaries] = useState<FriendDiary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
-  const [giftWraps, setGiftWraps] = useState<string[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedNostrEvent, setSelectedNostrEvent] = useState<string | null>(null);
+  const [nostrEventData, setNostrEventData] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulate loading data from an API
-    const loadMockData = async () => {
-      setIsLoading(true);
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Mock data for friends' shared diaries
-      const mockFriendDiaries: FriendDiary[] = [
-        {
-		name: "张三",
-		pubkey: "npub1abc...",
-		entries: [
-		  {
-		    date: "2023-11-02",
-		    content: "今天天气很好，出去散步了一会儿。感觉心情好多了。",
-		    id: "note1",
-            weather: "晴"
-		  },
-		  {
-		    date: "2023-10-28",
-		    content: "周末参加了一个有趣的工作坊，认识了很多新朋友。",
-		    id: "note2",
-            weather: "多云"
-		  }
-		]
-	      },
-	      {
-		name: "李四",
-		pubkey: "npub2def...",
-		entries: [
-		  {
-		    date: "2023-11-03",
-		    content: "新书到了，迫不及待地读了前三章。真是太精彩了！",
-		    id: "note3",
-            weather: "小雨"
-		  }
-		]
-	      }
-      ];
-      
-      // Sort each friend's entries by date in descending order
-      const sortedDiaries = mockFriendDiaries.map(friend => ({
-        ...friend,
-        entries: [...friend.entries].sort((a, b) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        )
-      }));
-      
-      setDiaries(sortedDiaries);
-      // Set first friend as selected by default if any exist
-      if (sortedDiaries.length > 0) {
-        setSelectedFriend(sortedDiaries[0].pubkey);
-      }
-      setIsLoading(false);
-    };
-
     const loadGiftWraps = async () => {
-      const giftWraps = await fetchGiftWraps("ws://localhost:8080");
-      setGiftWraps(giftWraps);
+      setIsLoading(true);
+      try {
+        const giftWrapResponses = await fetchGiftWraps("ws://localhost:8080");
+        const giftWraps = giftWrapResponses.map(toUnwrappedGift);
+        // Convert gift wraps to FriendDiary format
+        const friendDiariesMap = new Map<string, FriendDiary>();
+        
+        giftWraps.forEach(gift => {
+          const senderPubkey = gift.sender_pubkey;
+          const rumor = gift.rumor;
+          
+          if (!friendDiariesMap.has(senderPubkey)) {
+            friendDiariesMap.set(senderPubkey, {
+              name: shortenKey(senderPubkey),
+              pubkey: senderPubkey,
+              entries: []
+            });
+          }
+          
+          const friendDiary = friendDiariesMap.get(senderPubkey)!;
+          const weatherTag = rumor.tags.find(tag => tag[0] === 'weather');
+          friendDiary.entries.push({
+            date: new Date(Number(rumor.created_at) * 1000).toISOString().split('T')[0],
+            content: rumor.content,
+            id: rumor.id,
+            weather: weatherTag ? weatherTag[1] : "未知"
+          });
+        });
+
+        // Convert map to array and sort entries by date
+        const friendDiaries = Array.from(friendDiariesMap.values()).map(friend => ({
+          ...friend,
+          entries: [...friend.entries].sort((a, b) => 
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          )
+        }));
+
+        setDiaries(friendDiaries);
+        if (friendDiaries.length > 0) {
+          setSelectedFriend(friendDiaries[0].pubkey);
+        }
+      } catch (error) {
+        console.error("Failed to load gift wraps:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     
-    loadMockData();
     loadGiftWraps();
   }, []);
+
+  const handleViewOriginal = async (entryId: string) => {
+    try {
+      setSelectedNostrEvent(entryId);
+      // Since we already have the rumor event in the gift wrap, we can use it directly
+      const selectedEntry = diaries
+        .flatMap(friend => friend.entries)
+        .find(entry => entry.id === entryId);
+      
+      if (selectedEntry) {
+        const giftWrapResponses = await fetchGiftWraps("ws://localhost:8080");
+        const giftWraps = giftWrapResponses.map(toUnwrappedGift);
+        const giftWrap = giftWraps.find(gift => gift.rumor.id === entryId);
+        
+        if (giftWrap) {
+          setNostrEventData(JSON.stringify(giftWrap.rumor, null, 2));
+          setIsModalOpen(true);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load Nostr event:", error);
+    }
+  };
+
+  const closeNostrEventView = () => {
+    setIsModalOpen(false);
+    setSelectedNostrEvent(null);
+    setNostrEventData(null);
+  };
 
   const selectedFriendData = diaries.find(friend => friend.pubkey === selectedFriend);
 
@@ -96,14 +110,14 @@ export const FriendDiaryReader = ({
 
   return (
     <div className="mt-4">
-      {/* Debug section for gift wraps */}
-      <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-        <h3 className="text-lg font-semibold mb-2">Debug: Gift Wraps</h3>
-        <pre className="text-sm overflow-auto max-h-40">
-          {JSON.stringify(giftWraps, null, 2)}
-        </pre>
+      <div className="mb-6 bg-[#f9f6f0] dark:bg-[#2a2a28] p-4 rounded-lg">
+        <h2 className="text-xl font-medium mb-1 text-[#49818b] dark:text-[#49818b]">
+          朋友分享的日记
+        </h2>
+        <p className="text-sm text-[#8c7c67] dark:text-[#a6a69e]">
+          共 {diaries.length} 位朋友分享了日记
+        </p>
       </div>
-
       {diaries.length === 0 ? (
         <div className="text-center py-8 px-6 text-[#8c7c67] dark:text-[#a6a69e] italic">
           暂无朋友分享的日记
@@ -157,7 +171,7 @@ export const FriendDiaryReader = ({
                         <span className="hidden sm:inline">ID: {shortenKey(entry.id)}</span>
                         <button 
                           className="ml-2 bg-[#f7f5f0] dark:bg-[#262630] text-[#6d6a5c] dark:text-[#a2e2d8] text-xs py-0.5 px-2 border border-[#e6e1d5] dark:border-[#323237] rounded-full hover:bg-[#f0ede6] dark:hover:bg-[#2a2a32] transition-colors"
-                          onClick={() => onViewOriginal && onViewOriginal(entry.id)}
+                          onClick={() => handleViewOriginal(entry.id)}
                         >
                           查看
                         </button>
@@ -181,6 +195,27 @@ export const FriendDiaryReader = ({
           </div>
         </div>
       )}
+
+      <Modal isOpen={isModalOpen} onClose={closeNostrEventView}>
+        {selectedNostrEvent && nostrEventData ? (
+          <NostrEventViewer
+            selectedNostrEvent={selectedNostrEvent}
+            nostrEventData={nostrEventData}
+            closeNostrEventView={closeNostrEventView}
+            isOwnEvent={false}
+          />
+        ) : (
+          <div className="bg-white dark:bg-[#262624] rounded-md p-8 text-center">
+            <p className="text-lg mb-4">无法加载 Nostr 事件数据</p>
+            <button 
+              onClick={closeNostrEventView} 
+              className="bg-gradient-to-r from-[#49b3a1] to-[#3a9e8d] dark:from-[#43a595] dark:to-[#389384] text-white py-2 px-5 rounded-full hover:shadow-md"
+            >
+              关闭
+            </button>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }; 

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { DiaryEntry, LuXunDiaryEntry, CommonDiary } from "../types";
+import { DiaryEntry, LuXunDiaryEntry, CommonDiary, UnwrappedGiftResponse } from "../types";
 import luxunDiaries from '../assets/luxun-full-diary.json';
 
 export async function loadNostrPublicKey(): Promise<string> {
@@ -113,9 +113,9 @@ export async function getCommonDiariesCacheStatus(): Promise<string> {
   }
 }
 
-export async function fetchGiftWraps(relayUrl: string): Promise<string[]> {
+export async function fetchGiftWraps(relayUrl: string): Promise<UnwrappedGiftResponse[]> {
   try {
-    return await invoke<string[]>("fetch_gift_wraps", { relayUrl });
+    return await invoke<UnwrappedGiftResponse[]>("fetch_gift_wraps", { relayUrl });
   } catch (error) {
     console.error("Failed to fetch gift wraps:", error);
     throw error;
