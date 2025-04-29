@@ -241,7 +241,7 @@ pub async fn fetch_gift_wraps(
             let rumor = unwrapped_gift.rumor;
             let sender_pubkey = unwrapped_gift.sender.to_hex();
             UnwrappedGiftResponse {
-                sender_pubkey: sender_pubkey,
+                sender_pubkey,
                 gift_wrap_event: serde_json::to_string(&rumor).unwrap(),
             }
         }

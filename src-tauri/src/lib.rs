@@ -14,10 +14,31 @@ use std::sync::Mutex;
 use tauri::State;
 use uuid::Uuid;
 // Additional imports for GitHub API access
-use reqwest;
 
 // Add mod declaration for the gift wrap service
 pub mod gift_wrap_service;
+
+// Configuration structures
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Config {
+    relay_urls: Vec<String>,
+    default_relay_urls: Vec<String>,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            relay_urls: vec![
+                "wss://relay.damus.io".to_string(),
+                "wss://nostr.wine".to_string(),
+            ],
+            default_relay_urls: vec![
+                "wss://relay.damus.io".to_string(),
+                "wss://nostr.wine".to_string(),
+            ],
+        }
+    }
+}
 
 fn get_data_dir() -> PathBuf {
     let proj_dirs =
@@ -44,6 +65,66 @@ fn get_common_diaries_dir() -> PathBuf {
     fs::create_dir_all(&common_diaries_dir).expect("Failed to create common diaries directory");
     println!("Common diaries directory: {}", common_diaries_dir.display());
     common_diaries_dir
+}
+
+fn get_config_path() -> PathBuf {
+    let path = get_data_dir().join("config.json");
+    println!("Config file path: {}", path.display());
+    path
+}
+
+fn load_config() -> Result<Config, String> {
+    let config_path = get_config_path();
+    println!("Loading config from: {}", config_path.display());
+
+    if !config_path.exists() {
+        println!("Config file does not exist, creating default config");
+        let config = Config::default();
+        save_config(&config)?;
+        return Ok(config);
+    }
+
+    let mut file = match File::open(&config_path) {
+        Ok(file) => file,
+        Err(e) => return Err(format!("Failed to open config file: {}", e)),
+    };
+
+    let mut contents = String::new();
+    if let Err(e) = file.read_to_string(&mut contents) {
+        return Err(format!("Failed to read config file: {}", e));
+    }
+
+    println!("Loaded config contents: {}", contents);
+
+    match serde_json::from_str::<Config>(&contents) {
+        Ok(config) => Ok(config),
+        Err(e) => Err(format!("Failed to parse config file: {}", e)),
+    }
+}
+
+fn save_config(config: &Config) -> Result<(), String> {
+    let config_path = get_config_path();
+    println!("Saving config to: {}", config_path.display());
+
+    let json = match serde_json::to_string_pretty(config) {
+        Ok(json) => json,
+        Err(e) => return Err(format!("Failed to serialize config: {}", e)),
+    };
+
+    println!("Config to save: {}", json);
+
+    let mut file = match File::create(&config_path) {
+        Ok(file) => file,
+        Err(e) => return Err(format!("Failed to create config file: {}", e)),
+    };
+
+    match file.write_all(json.as_bytes()) {
+        Ok(_) => {
+            println!("Successfully saved config");
+            Ok(())
+        }
+        Err(e) => Err(format!("Failed to write config file: {}", e)),
+    }
 }
 
 fn setup_db() -> SqlResult<Connection> {
@@ -97,6 +178,7 @@ pub struct DiaryEntry {
 #[derive(Default)]
 pub struct DiaryStore {
     nostr_keys: Mutex<Option<Keys>>,
+    config: Mutex<Config>,
 }
 
 // Using String for private key storage - hex encoded format
@@ -180,10 +262,11 @@ fn save_nostr_keys(keys: &Keys) -> Result<(), String> {
 
 // Since sign() returns a Future, we need to make this function async
 async fn create_nostr_event(
-    keys: &Keys,
+    keys: Keys,
     content: &str,
     weather: &str,
     day: &str,
+    store: &Arc<DiaryStore>,
 ) -> Result<(String, String), String> {
     // Create tags
     let d_tag = Tag::parse(vec!["d".to_string(), day.to_string()])
@@ -193,15 +276,45 @@ async fn create_nostr_event(
         .map_err(|e| format!("Failed to create weather tag: {}", e))?;
 
     // Create event builder with content and kind and add tags
-    // Use method chaining to avoid ownership issues
     let event = EventBuilder::new(Kind::from(30027), content)
         .tags(vec![d_tag, weather_tag])
-        .sign(keys)
+        .sign(&keys)
         .await
         .map_err(|e| format!("Failed to create Nostr event: {}", e))?;
 
     let event_json = serde_json::to_string(&event)
         .map_err(|e| format!("Failed to serialize Nostr event: {}", e))?;
+
+    // Get configured relay URLs and clone them
+    let urls = {
+        let config = store.config.lock().unwrap();
+        if config.relay_urls.is_empty() {
+            config.default_relay_urls.clone()
+        } else {
+            config.relay_urls.clone()
+        }
+    };
+
+    // Create a single client for all relays
+    let client = nostr_sdk::Client::new(keys);
+
+    // Add all relays
+    for url in &urls {
+        if let Err(e) = client.add_relay(url).await {
+            println!("Failed to add relay {}: {}", url, e);
+        }
+    }
+
+    // Connect to all relays
+    client.connect().await;
+
+    // Send event to all connected relays
+    if let Err(e) = client.send_event(&event).await {
+        println!("Failed to send event: {}", e);
+    }
+
+    // Disconnect from all relays
+    let _ = client.disconnect().await;
 
     Ok((event.id.to_string(), event_json))
 }
@@ -262,7 +375,7 @@ async fn save_diary_entry(
 
     // Create Nostr event - use await
     let (nostr_id, nostr_event_json) =
-        create_nostr_event(&keys, &content, &weather, &entry_day).await?;
+        create_nostr_event(keys, &content, &weather, &entry_day, &store).await?;
 
     let entry = DiaryEntry {
         id: Uuid::new_v4().to_string(),
@@ -764,12 +877,12 @@ fn get_common_diaries_cache_status() -> Result<String, String> {
 
     // Create a more informative status message
     let status = if count == 0 {
-        if file_count > 0 {
-            format!("有 {} 个日记文件需要缓存，但当前缓存为空", file_count)
-        } else if file_count == 0 {
-            "日记目录中没有文件，缓存为空".to_string()
-        } else {
-            "缓存为空，无法读取日记目录".to_string()
+        match file_count.cmp(&0) {
+            std::cmp::Ordering::Greater => {
+                format!("有 {} 个日记文件需要缓存，但当前缓存为空", file_count)
+            }
+            std::cmp::Ordering::Equal => "日记目录中没有文件，缓存为空".to_string(),
+            std::cmp::Ordering::Less => "缓存为空，无法读取日记目录".to_string(),
         }
     } else if count == file_count {
         format!(
@@ -848,6 +961,34 @@ async fn download_file(url: &str, target_path: &PathBuf) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn get_config(store: State<Arc<DiaryStore>>) -> Result<Config, String> {
+    let config = store.config.lock().unwrap();
+    Ok(config.clone())
+}
+
+#[tauri::command]
+fn update_config(store: State<Arc<DiaryStore>>, new_config: Config) -> Result<(), String> {
+    println!("Updating config with: {:?}", new_config);
+
+    // Validate relay URLs
+    for url in &new_config.relay_urls {
+        if !url.starts_with("wss://") && !url.starts_with("ws://") {
+            return Err(format!("Invalid relay URL: {}", url));
+        }
+    }
+
+    // Save to file
+    save_config(&new_config)?;
+
+    // Update in-memory config
+    let mut config = store.config.lock().unwrap();
+    *config = new_config;
+    println!("Config updated successfully");
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     println!("Starting Lu Xun's Diary application");
@@ -856,9 +997,14 @@ pub fn run() {
     Lazy::force(&DB_CONNECTION);
     println!("Database initialized");
 
+    // Load config
+    let config = load_config().unwrap_or_default();
+    println!("Configuration loaded");
+
     // Initialize diary store
     let diary_store = Arc::new(DiaryStore {
         nostr_keys: Mutex::new(None),
+        config: Mutex::new(config),
     });
 
     tauri::Builder::default()
@@ -878,6 +1024,8 @@ pub fn run() {
             refresh_common_diaries_cache,
             get_common_diaries_cache_status,
             download_common_diaries,
+            get_config,
+            update_config,
             // Add the new gift wrap service commands
             gift_wrap_service::gift_wrap_diary,
             gift_wrap_service::share_gift_wrap,

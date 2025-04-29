@@ -4,6 +4,11 @@ import * as diaryService from "../utils/diaryService";
 import { useTheme } from "../contexts/ThemeContext";
 import { invoke } from "@tauri-apps/api/core";
 
+interface Config {
+  relay_urls: string[];
+  default_relay_urls: string[];
+}
+
 export function SettingsPage() {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
@@ -16,11 +21,75 @@ export function SettingsPage() {
   const [cacheStatus, setCacheStatus] = useState<string>("");
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [config, setConfig] = useState<Config>({
+    relay_urls: [],
+    default_relay_urls: [],
+  });
+  const [newRelayUrl, setNewRelayUrl] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadNostrPublicKey();
     getCacheStatus();
+    loadConfig();
   }, []);
+
+  async function loadConfig() {
+    try {
+      const config = await invoke<Config>("get_config");
+      setConfig(config);
+    } catch (error) {
+      console.error("Failed to load config:", error);
+    }
+  }
+
+  async function addRelayUrl() {
+    if (!newRelayUrl) return;
+    
+    if (!newRelayUrl.startsWith("wss://") && !newRelayUrl.startsWith("ws://")) {
+      setError("中继服务器地址必须以 wss:// 或 ws:// 开头");
+      return;
+    }
+
+    if (config.relay_urls.includes(newRelayUrl)) {
+      setError("该中继服务器地址已存在");
+      return;
+    }
+
+    const newConfig = {
+      ...config,
+      relay_urls: [...config.relay_urls, newRelayUrl],
+    };
+
+    try {
+      setConfig(newConfig);
+      await invoke("update_config", { newConfig });
+      setNewRelayUrl("");
+      setError("");
+    } catch (error) {
+      setError("保存配置失败");
+      console.error("Failed to save config:", error);
+      // 恢复原来的配置
+      setConfig(config);
+    }
+  }
+
+  async function removeRelayUrl(url: string) {
+    const newConfig = {
+      ...config,
+      relay_urls: config.relay_urls.filter((u) => u !== url),
+    };
+
+    try {
+      setConfig(newConfig);
+      await invoke("update_config", { newConfig });
+    } catch (error) {
+      setError("删除中继服务器失败");
+      console.error("Failed to remove relay URL:", error);
+      // 恢复原来的配置
+      setConfig(config);
+    }
+  }
 
   async function loadNostrPublicKey() {
     try {
@@ -148,9 +217,58 @@ export function SettingsPage() {
         {/* Nostr 设置 */}
         <section className="bg-white dark:bg-[#1e1e24] rounded-lg p-4 shadow-sm">
           <h2 className="text-base font-medium mb-3 text-[#42403a] dark:text-[#e6e1d5]">Nostr 设置</h2>
-          <div className="space-y-2">
-            <div className="px-3 py-2 rounded bg-[#f7f5f0] dark:bg-[#262630] text-[#5d5a4c] dark:text-[#a2e2d8] border border-[#e6e1d5] dark:border-[#323237] font-mono text-sm break-all">
-              {nostrPublicKey ?? "未设置 Nostr 公钥"}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-[#8c7c67] dark:text-[#a6a69e] mb-2">
+                Nostr 公钥
+              </label>
+              <div className="px-3 py-2 rounded bg-[#f7f5f0] dark:bg-[#262630] text-[#5d5a4c] dark:text-[#a2e2d8] border border-[#e6e1d5] dark:border-[#323237] font-mono text-sm break-all">
+                {nostrPublicKey ?? "未设置 Nostr 公钥"}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#8c7c67] dark:text-[#a6a69e] mb-2">
+                中继服务器设置
+              </label>
+              {error && (
+                <div className="mb-2 p-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded text-sm">
+                  {error}
+                </div>
+              )}
+              <div className="flex mb-2">
+                <input
+                  type="text"
+                  value={newRelayUrl}
+                  onChange={(e) => setNewRelayUrl((e.target as HTMLInputElement).value)}
+                  placeholder="wss://relay.example.com"
+                  className="flex-1 rounded-l-md border border-[#e9e4d9] dark:border-[#2c2c32] px-3 py-2 bg-white dark:bg-[#1a1a1e] text-[#8c7c67] dark:text-[#a6a69e] focus:outline-none focus:ring-2 focus:ring-[#49b3a1] dark:focus:ring-[#43a595]"
+                />
+                <button
+                  onClick={addRelayUrl}
+                  className="bg-gradient-to-r from-[#49b3a1] to-[#3a9e8d] dark:from-[#43a595] dark:to-[#389384] text-white px-4 py-2 rounded-r-md hover:shadow-md"
+                >
+                  添加
+                </button>
+              </div>
+              <div className="space-y-2">
+                {config.relay_urls.map((url) => (
+                  <div
+                    key={url}
+                    className="flex items-center justify-between p-2 bg-[#f9f6f0] dark:bg-[#2a2a28] rounded"
+                  >
+                    <span className="text-sm text-[#8c7c67] dark:text-[#a6a69e]">
+                      {url}
+                    </span>
+                    <button
+                      onClick={() => removeRelayUrl(url)}
+                      className="text-red-500 hover:text-red-700 dark:hover:text-red-400"
+                    >
+                      删除
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -185,32 +303,14 @@ export function SettingsPage() {
                 {downloading ? "下载中..." : "下载名人日记"}
               </button>
             </div>
-
-            <div className="rounded bg-[#f7f5f0] dark:bg-[#262630] p-3 border border-[#e6e1d5] dark:border-[#323237] text-sm">
-              <div className="flex items-center gap-2 mb-2 text-[#5d5a4c] dark:text-[#a2e2d8]">
-                <svg className="h-4 w-4 text-[#49b3a1] dark:text-[#43a595]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="font-medium">缓存状态</span>
-                {loadingStatus && <span className="text-xs italic opacity-70">更新中...</span>}
-              </div>
-              <p className="text-[#5d5a4c] dark:text-[#a2e2d8]">
-                {loadingStatus ? "正在获取缓存状态..." : cacheStatus || "暂无缓存信息"}
-              </p>
-            </div>
-
+            {loadingStatus ? (
+              <div className="text-sm text-[#8c7c67] dark:text-[#a6a69e]">加载中...</div>
+            ) : (
+              <div className="text-sm text-[#8c7c67] dark:text-[#a6a69e]">{cacheStatus}</div>
+            )}
             {dirPath && (
-              <div className="rounded bg-[#f7f5f0] dark:bg-[#262630] p-3 border border-[#e6e1d5] dark:border-[#323237] text-sm">
-                <p className="text-[#5d5a4c] dark:text-[#a2e2d8] mb-2">目录路径</p>
-                <code className="block text-xs p-2 bg-white dark:bg-[#1a1a1e] rounded border border-[#e6e1d5] dark:border-[#323237] overflow-x-auto">
-                  {dirPath}
-                </code>
-                <button
-                  onClick={() => setDirPath(null)}
-                  className="mt-2 text-xs text-[#49b3a1] dark:text-[#43a595] hover:text-[#3a9e8d] dark:hover:text-[#389384]"
-                >
-                  隐藏路径
-                </button>
+              <div className="text-sm text-[#8c7c67] dark:text-[#a6a69e] break-all">
+                名人日记目录: {dirPath}
               </div>
             )}
           </div>
