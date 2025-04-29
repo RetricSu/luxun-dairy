@@ -18,7 +18,7 @@ export const FriendDiaryReader = (): ComponentChildren => {
     const loadGiftWraps = async () => {
       setIsLoading(true);
       try {
-        const giftWrapResponses = await fetchGiftWraps("ws://localhost:8080");
+        const giftWrapResponses = await fetchGiftWraps();
         const giftWraps = giftWrapResponses.map(toUnwrappedGift);
         // Convert gift wraps to FriendDiary format
         const friendDiariesMap = new Map<string, FriendDiary>();
@@ -76,7 +76,7 @@ export const FriendDiaryReader = (): ComponentChildren => {
         .find(entry => entry.id === entryId);
       
       if (selectedEntry) {
-        const giftWrapResponses = await fetchGiftWraps("ws://localhost:8080");
+        const giftWrapResponses = await fetchGiftWraps();
         const giftWraps = giftWrapResponses.map(toUnwrappedGift);
         const giftWrap = giftWraps.find(gift => gift.rumor.id === entryId);
         

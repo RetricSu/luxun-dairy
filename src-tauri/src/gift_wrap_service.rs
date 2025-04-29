@@ -242,7 +242,7 @@ pub async fn fetch_gift_wraps(
     let mut all_events = Vec::new();
     for relay_url in &relay_urls {
         match client
-            .fetch_events_from([relay_url.as_str()], filter.clone(), Duration::new(30, 0))
+            .fetch_events_from([relay_url.as_str()], filter.clone(), Duration::new(5, 0))
             .await
         {
             Ok(events) => {
