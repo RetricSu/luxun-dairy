@@ -17,7 +17,7 @@ export function GiftWrapShare({ entry, onClose, isOpen }: GiftWrapShareProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [giftWrapData, setGiftWrapData] = useState<{ event: string; id: string } | null>(null);
-  const [relayUrl, setRelayUrl] = useState('wss://relay.damus.io/');
+  const [relayUrl, setRelayUrl] = useState('ws://localhost:8080');
 
   // Reset form when closed
   const handleClose = () => {
@@ -162,7 +162,7 @@ export function GiftWrapShare({ entry, onClose, isOpen }: GiftWrapShareProps) {
                     onChange={(e: JSX.TargetedEvent<HTMLInputElement, Event>) => setRelayUrl(e.currentTarget.value)}
                     disabled={isSharing}
                     className="w-full p-2 border border-gray-300 rounded-md"
-                    placeholder="wss://relay.damus.io/"
+                    placeholder="ws://localhost:8080"
                   />
                 </div>
                 
@@ -192,6 +192,16 @@ export function GiftWrapShare({ entry, onClose, isOpen }: GiftWrapShareProps) {
               <div className="mt-4">
                 <p className="text-sm font-medium text-gray-700 mb-1">Gift Wrap ID:</p>
                 <p className="text-xs break-all bg-gray-100 p-2 rounded-md">{giftWrapData.id}</p>
+                <div className="mt-4">
+                  <details className="bg-gray-100 rounded-md">
+                    <summary className="text-sm font-medium text-gray-700 p-2 cursor-pointer hover:bg-gray-200">
+                      Show Raw Gift Wrap Event
+                    </summary>
+                    <pre className="text-xs p-2 overflow-x-auto">
+                      {JSON.stringify(JSON.parse(giftWrapData.event), null, 2)}
+                    </pre>
+                  </details>
+                </div>
               </div>
             )}
           </>

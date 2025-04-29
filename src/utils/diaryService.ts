@@ -111,4 +111,13 @@ export async function getCommonDiariesCacheStatus(): Promise<string> {
     console.error("Failed to get common diaries cache status:", error);
     throw error;
   }
+}
+
+export async function fetchGiftWraps(relayUrl: string): Promise<string[]> {
+  try {
+    return await invoke<string[]>("fetch_gift_wraps", { relayUrl });
+  } catch (error) {
+    console.error("Failed to fetch gift wraps:", error);
+    throw error;
+  }
 } 

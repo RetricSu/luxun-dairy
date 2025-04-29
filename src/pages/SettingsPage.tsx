@@ -1,7 +1,6 @@
 import { useState, useEffect } from "preact/hooks";
 import { useNavigate } from "react-router-dom";
 import * as diaryService from "../utils/diaryService";
-import { shortenKey } from "../utils/helpers";
 import { useTheme } from "../contexts/ThemeContext";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -149,7 +148,7 @@ export function SettingsPage() {
           <div className="flex flex-col space-y-2">
             <label className="text-sm text-[#6d6a5c] dark:text-[#a2e2d8]">公钥</label>
             <div className="px-4 py-3 rounded-lg bg-[#f7f5f0] dark:bg-[#262630] text-[#5d5a4c] dark:text-[#a2e2d8] border border-[#e6e1d5] dark:border-[#323237] font-mono text-sm break-all">
-              {nostrPublicKey ? shortenKey(nostrPublicKey) : "未设置 Nostr 公钥"}
+              {nostrPublicKey ?? "未设置 Nostr 公钥"}
             </div>
           </div>
         </div>

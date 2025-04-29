@@ -138,18 +138,6 @@ export function ReadPage() {
             </button>
           ))}
         </div>
-        
-        {/* Loading info */}
-        {loadingSource && !isLoading && activeTab !== "my-diary" && activeTab !== "friend-diaries" && (
-          <div className="flex items-center px-1 py-1 mt-1 mb-1">
-            <span className="text-xs text-[#8c7c67] dark:text-[#a6a69e] flex items-center">
-              <svg className="h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {loadingSource}
-            </span>
-          </div>
-        )}
       </div>
 
       <div className="mt-6">
@@ -168,6 +156,17 @@ export function ReadPage() {
           <FriendDiaryReader onViewOriginal={handleViewOriginal} />
         ) : (
           <div>
+            {/* Loading info */}
+            {loadingSource && !isLoading && activeTab !== "my-diary" && activeTab !== "friend-diaries" && (
+              <div className="flex items-center px-1 py-1 mt-1 mb-1">
+                <span className="text-xs text-[#8c7c67] dark:text-[#a6a69e] flex items-center">
+                  <svg className="h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {loadingSource}
+                </span>
+              </div>
+            )}
             <div className="mb-6 bg-[#f9f6f0] dark:bg-[#2a2a28] p-4 rounded-lg">
               <h2 className="text-xl font-medium mb-1 text-[#49818b] dark:text-[#49818b]">
                 {commonDiaries.find(d => d.author === activeTab)?.title || activeTab}

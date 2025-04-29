@@ -2,6 +2,7 @@ import { ComponentChildren } from "preact";
 import { useState, useEffect } from "preact/hooks";
 import { FriendDiary } from "../types";
 import { shortenKey } from "../utils/helpers";
+import { fetchGiftWraps } from "../utils/diaryService";
 
 interface FriendDiaryReaderProps {
   onViewOriginal?: (entryId: string) => void;
@@ -13,6 +14,7 @@ export const FriendDiaryReader = ({
   const [diaries, setDiaries] = useState<FriendDiary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
+  const [giftWraps, setGiftWraps] = useState<string[]>([]);
 
   useEffect(() => {
     // Simulate loading data from an API
@@ -70,8 +72,14 @@ export const FriendDiaryReader = ({
       }
       setIsLoading(false);
     };
+
+    const loadGiftWraps = async () => {
+      const giftWraps = await fetchGiftWraps("ws://localhost:8080");
+      setGiftWraps(giftWraps);
+    };
     
     loadMockData();
+    loadGiftWraps();
   }, []);
 
   const selectedFriendData = diaries.find(friend => friend.pubkey === selectedFriend);
@@ -88,6 +96,14 @@ export const FriendDiaryReader = ({
 
   return (
     <div className="mt-4">
+      {/* Debug section for gift wraps */}
+      <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+        <h3 className="text-lg font-semibold mb-2">Debug: Gift Wraps</h3>
+        <pre className="text-sm overflow-auto max-h-40">
+          {JSON.stringify(giftWraps, null, 2)}
+        </pre>
+      </div>
+
       {diaries.length === 0 ? (
         <div className="text-center py-8 px-6 text-[#8c7c67] dark:text-[#a6a69e] italic">
           暂无朋友分享的日记
