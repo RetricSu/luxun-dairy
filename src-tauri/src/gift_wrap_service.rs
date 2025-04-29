@@ -194,7 +194,6 @@ pub fn validate_pubkey(pubkey: String) -> Result<bool, String> {
 #[tauri::command]
 pub async fn fetch_gift_wraps(
     store: State<'_, Arc<DiaryStore>>,
-    relay_url: String,
 ) -> Result<Vec<UnwrappedGiftResponse>, String> {
     // Get the user's keys
     let keys = get_or_create_nostr_keys(&store)?;
@@ -202,16 +201,33 @@ pub async fn fetch_gift_wraps(
 
     println!("Fetching gift wraps for pubkey: {}", user_pubkey);
 
+    // Get configured relay URLs from app state
+    // Clone the values so we don't hold the MutexGuard across await points
+    let relay_urls = {
+        let config_lock = store.config.lock().map_err(|_| "Failed to lock config".to_string())?;
+        if !config_lock.relay_urls.is_empty() {
+            config_lock.relay_urls.clone()
+        } else {
+            config_lock.default_relay_urls.clone()
+        }
+    }; // MutexGuard is dropped here
+
+    if relay_urls.is_empty() {
+        return Err("No relay URLs configured".to_string());
+    }
+
     // Create client
     let client = ClientBuilder::new().build();
 
-    // Add the relay
-    client
-        .add_relay(relay_url.clone())
-        .await
-        .map_err(|e| format!("Failed to add relay: {}", e))?;
+    // Add all relays
+    for relay_url in &relay_urls {
+        client
+            .add_relay(relay_url)
+            .await
+            .map_err(|e| format!("Failed to add relay {}: {}", relay_url, e))?;
+    }
 
-    // Connect to the relay
+    // Connect to the relays
     client.connect().await;
 
     // Create a filter to find gift wrap events (kind 1059) with p tag matching user's pubkey
@@ -222,17 +238,30 @@ pub async fn fetch_gift_wraps(
     println!("Subscribing with filter: {:?}", filter);
 
     // Create a subscription with timeout
-    let events = client
-        .fetch_events_from(["ws://localhost:8080"], filter, Duration::new(30, 0))
-        .await
-        .map_err(|e| format!("Failed to fetch events: {}", e))?;
+    // Use a simpler approach - fetch from each relay individually
+    let mut all_events = Vec::new();
+    for relay_url in &relay_urls {
+        match client
+            .fetch_events_from([relay_url.as_str()], filter.clone(), Duration::new(30, 0))
+            .await
+        {
+            Ok(events) => {
+                println!("Received {} events from {}", events.len(), relay_url);
+                all_events.extend(events);
+            }
+            Err(e) => {
+                println!("Failed to fetch events from {}: {}", relay_url, e);
+                // Continue with other relays even if one fails
+            }
+        }
+    }
 
-    println!("Received {} events", events.len());
+    println!("Received {} events total", all_events.len());
 
     // Disconnect from the relay
     let _ = client.disconnect().await;
 
-    let events_json_futures = events.into_iter().map(|e| {
+    let events_json_futures = all_events.into_iter().map(|e| {
         let nostr_signer = &keys;
         async move {
             let unwrapped_gift = UnwrappedGift::from_gift_wrap(nostr_signer, &e)

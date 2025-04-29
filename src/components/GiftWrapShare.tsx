@@ -3,6 +3,7 @@ import { useState } from 'preact/hooks';
 import { DiaryEntry } from '../types/DiaryEntry';
 import {Modal} from './Modal';
 import { JSX } from 'preact';
+import { useRelayUrls } from '../hooks/useRelayUrls';
 
 interface GiftWrapShareProps {
   entry: DiaryEntry | null;
@@ -17,7 +18,8 @@ export function GiftWrapShare({ entry, onClose, isOpen }: GiftWrapShareProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [giftWrapData, setGiftWrapData] = useState<{ event: string; id: string } | null>(null);
-  const [relayUrl, setRelayUrl] = useState('ws://localhost:8080');
+  const { relayUrls, isLoading: isLoadingRelays, error: relayError } = useRelayUrls();
+  const [selectedRelayUrl, setSelectedRelayUrl] = useState<string>('');
 
   // Reset form when closed
   const handleClose = () => {
@@ -27,6 +29,7 @@ export function GiftWrapShare({ entry, onClose, isOpen }: GiftWrapShareProps) {
     setGiftWrapData(null);
     setIsWrapping(false);
     setIsSharing(false);
+    setSelectedRelayUrl('');
     onClose();
   };
 
@@ -88,6 +91,11 @@ export function GiftWrapShare({ entry, onClose, isOpen }: GiftWrapShareProps) {
       setError('没有可分享的加密分享数据');
       return;
     }
+
+    if (!selectedRelayUrl) {
+      setError('请选择一个中继服务器');
+      return;
+    }
     
     setIsSharing(true);
     setError(null);
@@ -95,7 +103,7 @@ export function GiftWrapShare({ entry, onClose, isOpen }: GiftWrapShareProps) {
     try {
       const result = await invoke<string>('share_gift_wrap', {
         giftWrapJson: giftWrapData.event,
-        relayUrl,
+        relayUrl: selectedRelayUrl,
       });
       
       setSuccess(result);
@@ -164,19 +172,30 @@ export function GiftWrapShare({ entry, onClose, isOpen }: GiftWrapShareProps) {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     中继服务器地址
                   </label>
-                  <input
-                    type="text"
-                    value={relayUrl}
-                    onChange={(e: JSX.TargetedEvent<HTMLInputElement, Event>) => setRelayUrl(e.currentTarget.value)}
-                    disabled={isSharing}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="ws://localhost:8080"
-                  />
+                  {isLoadingRelays ? (
+                    <div className="text-sm text-gray-500">加载中...</div>
+                  ) : relayError ? (
+                    <div className="text-sm text-red-500">{relayError}</div>
+                  ) : (
+                    <select
+                      value={selectedRelayUrl}
+                      onChange={(e: JSX.TargetedEvent<HTMLSelectElement, Event>) => setSelectedRelayUrl(e.currentTarget.value)}
+                      disabled={isSharing}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">选择中继服务器</option>
+                      {relayUrls.map((url) => (
+                        <option key={url} value={url}>
+                          {url}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 
                 <button
                   onClick={handleShare}
-                  disabled={isSharing}
+                  disabled={isSharing || !selectedRelayUrl}
                   className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition-colors duration-200"
                 >
                   {isSharing ? '正在分享...' : '分享到中继服务器'}

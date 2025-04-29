@@ -113,11 +113,6 @@ export async function getCommonDiariesCacheStatus(): Promise<string> {
   }
 }
 
-export async function fetchGiftWraps(relayUrl: string): Promise<UnwrappedGiftResponse[]> {
-  try {
-    return await invoke<UnwrappedGiftResponse[]>("fetch_gift_wraps", { relayUrl });
-  } catch (error) {
-    console.error("Failed to fetch gift wraps:", error);
-    throw error;
-  }
+export async function fetchGiftWraps(): Promise<UnwrappedGiftResponse[]> {
+  return await invoke<UnwrappedGiftResponse[]>('fetch_gift_wraps');
 } 
