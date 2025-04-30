@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { DiaryEntry, LuXunDiaryEntry, CommonDiary } from "../types";
+import { DiaryEntry, LuXunDiaryEntry, CommonDiary, UnwrappedGiftResponse } from "../types";
 import luxunDiaries from '../assets/luxun-full-diary.json';
 
 export async function loadNostrPublicKey(): Promise<string> {
@@ -111,4 +111,8 @@ export async function getCommonDiariesCacheStatus(): Promise<string> {
     console.error("Failed to get common diaries cache status:", error);
     throw error;
   }
+}
+
+export async function fetchGiftWraps(): Promise<UnwrappedGiftResponse[]> {
+  return await invoke<UnwrappedGiftResponse[]>('fetch_gift_wraps');
 } 

@@ -28,6 +28,48 @@ export function MonthCalendar({ entries }: MonthCalendarProps) {
   const currentMonth = viewDate.getMonth();
   const currentYear = viewDate.getFullYear();
   
+  // 计算历史累计记录天数
+  const getTotalEntriesCount = (): number => {
+    return entries.length;
+  };
+  
+  // 计算连续记录天数
+  const getConsecutiveDaysCount = (): number => {
+    if (entries.length === 0) return 0;
+    
+    // Sort entries by date (newest first)
+    const sortedEntries = [...entries].sort((a, b) => 
+      new Date(b.day).getTime() - new Date(a.day).getTime()
+    );
+    
+    // Start with the most recent entry
+    const mostRecentDate = new Date(sortedEntries[0].day);
+    mostRecentDate.setHours(0, 0, 0, 0);
+    
+    // First entry counts as 1
+    let consecutiveDays = 1;
+    
+    // Check for consecutive days
+    let expectedDate = new Date(mostRecentDate);
+    expectedDate.setDate(expectedDate.getDate() - 1);
+    
+    for (let i = 1; i < sortedEntries.length; i++) {
+      const entryDate = new Date(sortedEntries[i].day);
+      entryDate.setHours(0, 0, 0, 0);
+      
+      // If this entry matches the expected date
+      if (entryDate.getTime() === expectedDate.getTime()) {
+        consecutiveDays++;
+        expectedDate.setDate(expectedDate.getDate() - 1);
+      } else {
+        // Chain is broken
+        break;
+      }
+    }
+    
+    return consecutiveDays;
+  };
+  
   // Generate days for current month with proper calendar layout
   const getCalendarDays = () => {
     // Get first day of month (0 = Sunday, 1 = Monday, etc.)
@@ -358,11 +400,26 @@ export function MonthCalendar({ entries }: MonthCalendarProps) {
             );
           })}
         </div>
+        
+        {/* Month statistics */}
+        <div className="mt-10 text-xs text-[#a8a89e] text-left">
+          {(() => {
+            // Count entries for current month only
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const entriesThisMonth = entries.filter(entry => {
+              const entryDate = new Date(entry.day);
+              return entryDate.getMonth() === currentMonth && entryDate.getFullYear() === currentYear;
+            });
+            return `本月记录了 ${entriesThisMonth.length}/${daysInMonth} 天`;
+          })()}
+        </div>
       </div>
       
       {/* Right side: Navigation controls */}
       <div className="p-5 w-full md:w-1/2 border-t md:border-t-0 md:border-l border-[#e9e4d9] dark:border-[#2c2c32] flex flex-col">
-        <span className="text-[#a8a89e] text-sm mt-1 mb-5">日历导航</span>
+        <span className="text-[#a8a89e] text-sm mt-1 mb-5">
+          {`累计记录 ${getTotalEntriesCount()} 天 · 已连续记录 ${getConsecutiveDaysCount()} 天`}
+        </span>
         
         <div className="space-y-5">
           {/* Search box */}

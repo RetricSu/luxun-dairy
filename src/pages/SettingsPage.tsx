@@ -1,9 +1,13 @@
 import { useState, useEffect } from "preact/hooks";
 import { useNavigate } from "react-router-dom";
 import * as diaryService from "../utils/diaryService";
-import { shortenKey } from "../utils/helpers";
 import { useTheme } from "../contexts/ThemeContext";
 import { invoke } from "@tauri-apps/api/core";
+
+interface Config {
+  relay_urls: string[];
+  default_relay_urls: string[];
+}
 
 export function SettingsPage() {
   const navigate = useNavigate();
@@ -17,11 +21,75 @@ export function SettingsPage() {
   const [cacheStatus, setCacheStatus] = useState<string>("");
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [config, setConfig] = useState<Config>({
+    relay_urls: [],
+    default_relay_urls: [],
+  });
+  const [newRelayUrl, setNewRelayUrl] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadNostrPublicKey();
     getCacheStatus();
+    loadConfig();
   }, []);
+
+  async function loadConfig() {
+    try {
+      const config = await invoke<Config>("get_config");
+      setConfig(config);
+    } catch (error) {
+      console.error("Failed to load config:", error);
+    }
+  }
+
+  async function addRelayUrl() {
+    if (!newRelayUrl) return;
+    
+    if (!newRelayUrl.startsWith("wss://") && !newRelayUrl.startsWith("ws://")) {
+      setError("中继服务器地址必须以 wss:// 或 ws:// 开头");
+      return;
+    }
+
+    if (config.relay_urls.includes(newRelayUrl)) {
+      setError("该中继服务器地址已存在");
+      return;
+    }
+
+    const newConfig = {
+      ...config,
+      relay_urls: [...config.relay_urls, newRelayUrl],
+    };
+
+    try {
+      setConfig(newConfig);
+      await invoke("update_config", { newConfig });
+      setNewRelayUrl("");
+      setError("");
+    } catch (error) {
+      setError("保存配置失败");
+      console.error("Failed to save config:", error);
+      // 恢复原来的配置
+      setConfig(config);
+    }
+  }
+
+  async function removeRelayUrl(url: string) {
+    const newConfig = {
+      ...config,
+      relay_urls: config.relay_urls.filter((u) => u !== url),
+    };
+
+    try {
+      setConfig(newConfig);
+      await invoke("update_config", { newConfig });
+    } catch (error) {
+      setError("删除中继服务器失败");
+      console.error("Failed to remove relay URL:", error);
+      // 恢复原来的配置
+      setConfig(config);
+    }
+  }
 
   async function loadNostrPublicKey() {
     try {
@@ -113,9 +181,9 @@ export function SettingsPage() {
   }
 
   return (
-    <main className="max-w-4xl mx-auto py-8 px-6 sm:px-10 min-h-screen bg-[#faf9f6] dark:bg-[#121214]">
-      <div className="flex justify-between items-center mb-10 pb-5 border-b border-[#e9e4d9] dark:border-[#2c2c32]">
-        <h1 className="text-2xl font-medium text-[#42403a] dark:text-[#e6e1d5]">设置</h1>
+    <main className="max-w-3xl mx-auto py-6 px-4 min-h-screen bg-[#faf9f6] dark:bg-[#121214]">
+      <div className="flex justify-between items-center mb-8 pb-4 border-b border-[#e9e4d9] dark:border-[#2c2c32]">
+        <h1 className="text-xl font-medium text-[#42403a] dark:text-[#e6e1d5]">设置</h1>
         <button 
           className="bg-gradient-to-r from-[#49b3a1] to-[#3a9e8d] dark:from-[#43a595] dark:to-[#389384] text-white text-sm py-2.5 px-5 rounded-full hover:shadow-md"
           onClick={() => navigate(-1)}
@@ -124,143 +192,158 @@ export function SettingsPage() {
         </button>
       </div>
       
-      <div className="mt-8 bg-white dark:bg-[#1e1e24] rounded-xl shadow-sm p-6 md:p-8">
-        <div className="mb-8">
-          <h2 className="text-xl font-medium mb-4 text-[#42403a] dark:text-[#e6e1d5]">日期设置</h2>
-          <div className="flex flex-col space-y-2">
-            <label className="text-sm text-[#6d6a5c] dark:text-[#a2e2d8]">选择日期</label>
-            <input 
-              type="date" 
-              value={selectedDay}
-              onChange={handleDayChange}
-              className="px-4 py-2 rounded-lg bg-[#f7f5f0] dark:bg-[#262630] text-[#5d5a4c] dark:text-[#a2e2d8] border border-[#e6e1d5] dark:border-[#323237]"
-            />
-            <button 
-              className="mt-2 self-start bg-[#f0ede6] dark:bg-[#2a2a32] text-[#6d6a5c] dark:text-[#a2e2d8] px-4 py-2 rounded-lg border border-[#e6e1d5] dark:border-[#323237] hover:bg-[#e9e4d9] dark:hover:bg-[#323237]"
-              onClick={() => navigate(`/?date=${selectedDay}`)}
-            >
-              跳转到此日期
-            </button>
-          </div>
-        </div>
-        
-        <div className="mb-8">
-          <h2 className="text-xl font-medium mb-4 text-[#42403a] dark:text-[#e6e1d5]">Nostr 设置</h2>
-          <div className="flex flex-col space-y-2">
-            <label className="text-sm text-[#6d6a5c] dark:text-[#a2e2d8]">公钥</label>
-            <div className="px-4 py-3 rounded-lg bg-[#f7f5f0] dark:bg-[#262630] text-[#5d5a4c] dark:text-[#a2e2d8] border border-[#e6e1d5] dark:border-[#323237] font-mono text-sm break-all">
-              {nostrPublicKey ? shortenKey(nostrPublicKey) : "未设置 Nostr 公钥"}
-            </div>
-          </div>
-        </div>
-        
-        <div className="mb-8">
-          <h2 className="text-xl font-medium mb-4 text-[#42403a] dark:text-[#e6e1d5]">名人日记</h2>
-          <p className="text-sm mb-4 text-[#6d6a5c] dark:text-[#a2e2d8]">
-            您可以添加格式化的名人日记 JSON 文件至指定目录，系统会自动加载它们。
-          </p>
-          
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button
-              onClick={showCommonDiariesDir}
-              className="bg-[#f0ede6] dark:bg-[#2a2a32] text-[#6d6a5c] dark:text-[#a2e2d8] px-4 py-2 rounded-lg border border-[#e6e1d5] dark:border-[#323237] hover:bg-[#e9e4d9] dark:hover:bg-[#323237]"
-            >
-              查看名人日记目录
-            </button>
-            
-            <button
-              onClick={refreshCommonDiariesCache}
-              disabled={refreshing}
-              className={`bg-[#f0ede6] dark:bg-[#2a2a32] text-[#6d6a5c] dark:text-[#a2e2d8] px-4 py-2 rounded-lg border border-[#e6e1d5] dark:border-[#323237] ${
-                refreshing 
-                  ? "opacity-50 cursor-not-allowed" 
-                  : "hover:bg-[#e9e4d9] dark:hover:bg-[#323237]"
-              }`}
-            >
-              {refreshing ? "刷新中..." : "重建缓存"}
-            </button>
-            
-            <button
-              onClick={downloadCommonDiaries}
-              disabled={downloading}
-              className={`bg-[#f0ede6] dark:bg-[#2a2a32] text-[#6d6a5c] dark:text-[#a2e2d8] px-4 py-2 rounded-lg border border-[#e6e1d5] dark:border-[#323237] ${
-                downloading 
-                  ? "opacity-50 cursor-not-allowed" 
-                  : "hover:bg-[#e9e4d9] dark:hover:bg-[#323237]"
-              }`}
-            >
-              {downloading ? "下载中..." : "下载名人日记"}
-            </button>
-          </div>
-          
-          <div className="mb-4 p-4 bg-[#f7f5f0] dark:bg-[#262630] rounded-lg border border-[#e6e1d5] dark:border-[#323237]">
-            <div className="flex items-center mb-2">
-              <svg className="h-5 w-5 mr-2 text-[#49b3a1] dark:text-[#43a595]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              <p className="text-sm font-medium text-[#6d6a5c] dark:text-[#a2e2d8]">
-                缓存状态
-                {loadingStatus && <span className="ml-2 text-xs italic opacity-70">更新中...</span>}
-              </p>
-            </div>
-            <p className="text-sm py-2 px-3 bg-white dark:bg-[#1a1a1e] rounded border border-[#e6e1d5] dark:border-[#323237]">
-              {loadingStatus ? "正在获取缓存状态..." : cacheStatus || "暂无缓存信息"}
-            </p>
-            <p className="text-xs mt-2 text-[#8c7c67] dark:text-[#8c8c84]">
-              * 缓存可提高应用性能，减少文件加载时间。添加或修改日记文件后，请重建缓存。
-            </p>
-          </div>
-          
-          {dirPath && (
-            <div className="mb-4 p-3 bg-[#f7f5f0] dark:bg-[#262630] rounded-lg border border-[#e6e1d5] dark:border-[#323237]">
-              <p className="text-sm text-[#6d6a5c] dark:text-[#a2e2d8] mb-1">名人日记目录路径:</p>
-              <code className="block text-xs p-2 bg-white dark:bg-[#1a1a1e] rounded border border-[#e6e1d5] dark:border-[#323237] overflow-x-auto">
-                {dirPath}
-              </code>
-              <p className="text-xs mt-2 text-[#6d6a5c] dark:text-[#8c8c84]">
-                请将您的JSON文件放在此目录中，应用将自动加载它们。
-                添加或更新文件后请点击"刷新缓存"按钮使其生效。
-              </p>
-              <button
-                onClick={() => setDirPath(null)}
-                className="mt-2 text-xs text-[#49b3a1] dark:text-[#43a595] hover:underline"
+      <div className="space-y-6">
+        {/* 日期设置 */}
+        <section className="bg-white dark:bg-[#1e1e24] rounded-lg p-4 shadow-sm">
+          <h2 className="text-base font-medium mb-3 text-[#42403a] dark:text-[#e6e1d5]">日期设置</h2>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <input 
+                type="date" 
+                value={selectedDay}
+                onChange={handleDayChange}
+                className="flex-1 px-3 py-1.5 rounded bg-[#f7f5f0] dark:bg-[#262630] text-[#5d5a4c] dark:text-[#a2e2d8] border border-[#e6e1d5] dark:border-[#323237] focus:outline-none focus:border-[#49b3a1] dark:focus:border-[#43a595]"
+              />
+              <button 
+                className="text-[#49b3a1] dark:text-[#43a595] hover:text-[#3a9e8d] dark:hover:text-[#389384] text-sm px-3 py-1.5"
+                onClick={() => navigate(`/?date=${selectedDay}`)}
               >
-                隐藏路径
+                跳转
               </button>
             </div>
-          )}
-        </div>
-        
-        <div className="mb-8">
-          <h2 className="text-xl font-medium mb-4 text-[#42403a] dark:text-[#e6e1d5]">主题设置</h2>
-          <p className="text-[#6d6a5c] dark:text-[#a2e2d8] mb-4">当前主题: {theme}</p>
-          <div className="flex space-x-4">
-            <button 
-              onClick={() => handleThemeChange("light")}
-              className={`px-4 py-2 rounded-lg bg-white text-[#5d5a4c] border ${theme === 'light' ? 'border-[#49b3a1] ring-2 ring-[#49b3a1]/20' : 'border-[#e6e1d5]'} hover:bg-[#f7f5f0]`}
-            >
-              明亮
-            </button>
-            <button 
-              onClick={() => handleThemeChange("dark")}
-              className={`px-4 py-2 rounded-lg bg-[#262630] text-[#e6e1d5] border ${theme === 'dark' ? 'border-[#49b3a1] ring-2 ring-[#49b3a1]/20' : 'border-[#323237]'} hover:bg-[#2a2a32]`}
-            >
-              暗黑
-            </button>
-            <button 
-              onClick={() => handleThemeChange("system")}
-              className={`px-4 py-2 rounded-lg bg-[#f7f5f0] text-[#5d5a4c] border ${theme === 'system' ? 'border-[#49b3a1] ring-2 ring-[#49b3a1]/20' : 'border-[#e6e1d5]'} hover:bg-[#f0ede6]`}
-            >
-              系统
-            </button>
           </div>
-        </div>
-        
-        <div>
-          <h2 className="text-xl font-medium mb-4 text-[#42403a] dark:text-[#e6e1d5]">关于</h2>
-          <p className="text-[#6d6a5c] dark:text-[#a2e2d8] mb-2">鲁迅日记 v0.1.0</p>
-          <p className="text-[#6d6a5c] dark:text-[#a2e2d8] text-sm">一个基于 Tauri 的桌面日记应用</p>
-        </div>
+        </section>
+
+        {/* Nostr 设置 */}
+        <section className="bg-white dark:bg-[#1e1e24] rounded-lg p-4 shadow-sm">
+          <h2 className="text-base font-medium mb-3 text-[#42403a] dark:text-[#e6e1d5]">Nostr 设置</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-[#8c7c67] dark:text-[#a6a69e] mb-2">
+                Nostr 公钥
+              </label>
+              <div className="px-3 py-2 rounded bg-[#f7f5f0] dark:bg-[#262630] text-[#5d5a4c] dark:text-[#a2e2d8] border border-[#e6e1d5] dark:border-[#323237] font-mono text-sm break-all">
+                {nostrPublicKey ?? "未设置 Nostr 公钥"}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#8c7c67] dark:text-[#a6a69e] mb-2">
+                中继服务器设置
+              </label>
+              {error && (
+                <div className="mb-2 p-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded text-sm">
+                  {error}
+                </div>
+              )}
+              <div className="flex mb-2">
+                <input
+                  type="text"
+                  value={newRelayUrl}
+                  onChange={(e) => setNewRelayUrl((e.target as HTMLInputElement).value)}
+                  placeholder="wss://relay.example.com"
+                  className="flex-1 rounded-l-md border border-[#e9e4d9] dark:border-[#2c2c32] px-3 py-2 bg-white dark:bg-[#1a1a1e] text-[#8c7c67] dark:text-[#a6a69e] focus:outline-none focus:ring-2 focus:ring-[#49b3a1] dark:focus:ring-[#43a595]"
+                />
+                <button
+                  onClick={addRelayUrl}
+                  className="bg-gradient-to-r from-[#49b3a1] to-[#3a9e8d] dark:from-[#43a595] dark:to-[#389384] text-white px-4 py-2 rounded-r-md hover:shadow-md"
+                >
+                  添加
+                </button>
+              </div>
+              <div className="space-y-2">
+                {config.relay_urls.map((url) => (
+                  <div
+                    key={url}
+                    className="flex items-center justify-between p-2 bg-[#f9f6f0] dark:bg-[#2a2a28] rounded"
+                  >
+                    <span className="text-sm text-[#8c7c67] dark:text-[#a6a69e]">
+                      {url}
+                    </span>
+                    <button
+                      onClick={() => removeRelayUrl(url)}
+                      className="text-red-500 hover:text-red-700 dark:hover:text-red-400"
+                    >
+                      删除
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 名人日记 */}
+        <section className="bg-white dark:bg-[#1e1e24] rounded-lg p-4 shadow-sm">
+          <h2 className="text-base font-medium mb-3 text-[#42403a] dark:text-[#e6e1d5]">名人日记</h2>
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={showCommonDiariesDir}
+                className="text-sm text-[#49b3a1] dark:text-[#43a595] hover:text-[#3a9e8d] dark:hover:text-[#389384] px-3 py-1.5"
+              >
+                查看目录
+              </button>
+              <button
+                onClick={refreshCommonDiariesCache}
+                disabled={refreshing}
+                className={`text-sm text-[#49b3a1] dark:text-[#43a595] hover:text-[#3a9e8d] dark:hover:text-[#389384] px-3 py-1.5 ${
+                  refreshing ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {refreshing ? "刷新中..." : "重建缓存"}
+              </button>
+              <button
+                onClick={downloadCommonDiaries}
+                disabled={downloading}
+                className={`text-sm text-[#49b3a1] dark:text-[#43a595] hover:text-[#3a9e8d] dark:hover:text-[#389384] px-3 py-1.5 ${
+                  downloading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {downloading ? "下载中..." : "下载名人日记"}
+              </button>
+            </div>
+            {loadingStatus ? (
+              <div className="text-sm text-[#8c7c67] dark:text-[#a6a69e]">加载中...</div>
+            ) : (
+              <div className="text-sm text-[#8c7c67] dark:text-[#a6a69e]">{cacheStatus}</div>
+            )}
+            {dirPath && (
+              <div className="text-sm text-[#8c7c67] dark:text-[#a6a69e] break-all">
+                名人日记目录: {dirPath}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* 主题设置 */}
+        <section className="bg-white dark:bg-[#1e1e24] rounded-lg p-4 shadow-sm">
+          <h2 className="text-base font-medium mb-3 text-[#42403a] dark:text-[#e6e1d5]">主题设置</h2>
+          <div className="flex gap-3">
+            {["light", "dark", "system"].map((t) => (
+              <button
+                key={t}
+                onClick={() => handleThemeChange(t as "light" | "dark" | "system")}
+                className={`px-3 py-1.5 rounded text-sm ${
+                  theme === t
+                    ? 'bg-[#49b3a1] dark:bg-[#43a595] text-white'
+                    : 'text-[#5d5a4c] dark:text-[#a2e2d8] hover:bg-[#f7f5f0] dark:hover:bg-[#262630]'
+                }`}
+              >
+                {{light: '明亮', dark: '暗黑', system: '系统'}[t]}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* 关于 */}
+        <section className="bg-white dark:bg-[#1e1e24] rounded-lg p-4 shadow-sm">
+          <h2 className="text-base font-medium mb-3 text-[#42403a] dark:text-[#e6e1d5]">关于</h2>
+          <div className="space-y-1 text-sm text-[#5d5a4c] dark:text-[#a2e2d8]">
+            <p>鲁迅日记 v0.1.0</p>
+            <p className="text-xs">一个基于 Tauri 的桌面日记应用</p>
+          </div>
+        </section>
       </div>
     </main>
   );

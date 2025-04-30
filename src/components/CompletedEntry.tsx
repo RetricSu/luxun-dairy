@@ -31,7 +31,7 @@ export function CompletedEntry({ selectedDay }: CompletedEntryProps) {
       const month = dateParts[1].replace(/^0+/, ''); // 移除前导零
       const day = dateParts[2].replace(/^0+/, ''); // 移除前导零
       return `${year}年${month}月${day}日`;
-    } catch (e) {
+    } catch (e: any) {
       return dateString;
     }
   };

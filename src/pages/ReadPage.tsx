@@ -8,6 +8,7 @@ import { DiaryEntry, CommonDiary } from "../types";
 import { Modal } from "../components/Modal";
 import { NostrEventViewer } from "../components/NostrEventViewer";
 import { CommonDiaryReader } from "../components/CommonDiaryReader";
+import { FriendDiaryReader } from "../components/FriendDiaryReader";
 
 export function ReadPage() {
   const navigate = useNavigate();
@@ -109,6 +110,30 @@ export function ReadPage() {
           >
             我的日记
           </button>
+
+          <button 
+            className={`px-4 py-2 mr-2 whitespace-nowrap text-sm font-medium rounded-t-lg transition-colors flex items-center
+              ${activeTab === "friend-diaries" 
+                ? "bg-white dark:bg-[#1a1a1e] text-[#49b3a1] dark:text-[#43a595] border-t border-l border-r border-[#e9e4d9] dark:border-[#2c2c32]" 
+                : "text-[#8c7c67] dark:text-[#a6a69e] hover:text-[#49b3a1] hover:dark:text-[#43a595]"}`}
+            onClick={() => setActiveTab("friend-diaries")}
+          >
+            <svg 
+              className="w-4 h-4 mr-1" 
+              xmlns="http://www.w3.org/2000/svg" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" 
+              />
+            </svg>
+            收件箱 
+          </button>
           
           {commonDiaries.map((diary) => (
             <button 
@@ -123,18 +148,6 @@ export function ReadPage() {
             </button>
           ))}
         </div>
-        
-        {/* Loading info */}
-        {loadingSource && !isLoading && activeTab !== "my-diary" && (
-          <div className="flex items-center px-1 py-1 mt-1 mb-1">
-            <span className="text-xs text-[#8c7c67] dark:text-[#a6a69e] flex items-center">
-              <svg className="h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {loadingSource}
-            </span>
-          </div>
-        )}
       </div>
 
       <div className="mt-6">
@@ -149,8 +162,21 @@ export function ReadPage() {
             <MonthCalendar entries={entries} />
             <Timeline entries={entries} viewNostrEvent={viewNostrEvent} />
           </>
+        ) : activeTab === "friend-diaries" ? (
+          <FriendDiaryReader />
         ) : (
           <div>
+            {/* Loading info */}
+            {loadingSource && !isLoading && activeTab !== "my-diary" && activeTab !== "friend-diaries" && (
+              <div className="flex items-center px-1 py-1 mt-1 mb-1">
+                <span className="text-xs text-[#8c7c67] dark:text-[#a6a69e] flex items-center">
+                  <svg className="h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {loadingSource}
+                </span>
+              </div>
+            )}
             <div className="mb-6 bg-[#f9f6f0] dark:bg-[#2a2a28] p-4 rounded-lg">
               <h2 className="text-xl font-medium mb-1 text-[#49818b] dark:text-[#49818b]">
                 {commonDiaries.find(d => d.author === activeTab)?.title || activeTab}

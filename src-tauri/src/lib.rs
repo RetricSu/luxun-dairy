@@ -14,7 +14,31 @@ use std::sync::Mutex;
 use tauri::State;
 use uuid::Uuid;
 // Additional imports for GitHub API access
-use reqwest;
+
+// Add mod declaration for the gift wrap service
+pub mod gift_wrap_service;
+
+// Configuration structures
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Config {
+    relay_urls: Vec<String>,
+    default_relay_urls: Vec<String>,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            relay_urls: vec![
+                "wss://relay.damus.io".to_string(),
+                "wss://nostr.wine".to_string(),
+            ],
+            default_relay_urls: vec![
+                "wss://relay.damus.io".to_string(),
+                "wss://nostr.wine".to_string(),
+            ],
+        }
+    }
+}
 
 fn get_data_dir() -> PathBuf {
     let proj_dirs =
@@ -41,6 +65,66 @@ fn get_common_diaries_dir() -> PathBuf {
     fs::create_dir_all(&common_diaries_dir).expect("Failed to create common diaries directory");
     println!("Common diaries directory: {}", common_diaries_dir.display());
     common_diaries_dir
+}
+
+fn get_config_path() -> PathBuf {
+    let path = get_data_dir().join("config.json");
+    println!("Config file path: {}", path.display());
+    path
+}
+
+fn load_config() -> Result<Config, String> {
+    let config_path = get_config_path();
+    println!("Loading config from: {}", config_path.display());
+
+    if !config_path.exists() {
+        println!("Config file does not exist, creating default config");
+        let config = Config::default();
+        save_config(&config)?;
+        return Ok(config);
+    }
+
+    let mut file = match File::open(&config_path) {
+        Ok(file) => file,
+        Err(e) => return Err(format!("Failed to open config file: {}", e)),
+    };
+
+    let mut contents = String::new();
+    if let Err(e) = file.read_to_string(&mut contents) {
+        return Err(format!("Failed to read config file: {}", e));
+    }
+
+    println!("Loaded config contents: {}", contents);
+
+    match serde_json::from_str::<Config>(&contents) {
+        Ok(config) => Ok(config),
+        Err(e) => Err(format!("Failed to parse config file: {}", e)),
+    }
+}
+
+fn save_config(config: &Config) -> Result<(), String> {
+    let config_path = get_config_path();
+    println!("Saving config to: {}", config_path.display());
+
+    let json = match serde_json::to_string_pretty(config) {
+        Ok(json) => json,
+        Err(e) => return Err(format!("Failed to serialize config: {}", e)),
+    };
+
+    println!("Config to save: {}", json);
+
+    let mut file = match File::create(&config_path) {
+        Ok(file) => file,
+        Err(e) => return Err(format!("Failed to create config file: {}", e)),
+    };
+
+    match file.write_all(json.as_bytes()) {
+        Ok(_) => {
+            println!("Successfully saved config");
+            Ok(())
+        }
+        Err(e) => Err(format!("Failed to write config file: {}", e)),
+    }
 }
 
 fn setup_db() -> SqlResult<Connection> {
@@ -92,8 +176,9 @@ pub struct DiaryEntry {
 }
 
 #[derive(Default)]
-struct DiaryStore {
+pub struct DiaryStore {
     nostr_keys: Mutex<Option<Keys>>,
+    config: Mutex<Config>,
 }
 
 // Using String for private key storage - hex encoded format
@@ -177,10 +262,11 @@ fn save_nostr_keys(keys: &Keys) -> Result<(), String> {
 
 // Since sign() returns a Future, we need to make this function async
 async fn create_nostr_event(
-    keys: &Keys,
+    keys: Keys,
     content: &str,
     weather: &str,
     day: &str,
+    store: &Arc<DiaryStore>,
 ) -> Result<(String, String), String> {
     // Create tags
     let d_tag = Tag::parse(vec!["d".to_string(), day.to_string()])
@@ -190,15 +276,45 @@ async fn create_nostr_event(
         .map_err(|e| format!("Failed to create weather tag: {}", e))?;
 
     // Create event builder with content and kind and add tags
-    // Use method chaining to avoid ownership issues
     let event = EventBuilder::new(Kind::from(30027), content)
         .tags(vec![d_tag, weather_tag])
-        .sign(keys)
+        .sign(&keys)
         .await
         .map_err(|e| format!("Failed to create Nostr event: {}", e))?;
 
     let event_json = serde_json::to_string(&event)
         .map_err(|e| format!("Failed to serialize Nostr event: {}", e))?;
+
+    // Get configured relay URLs and clone them
+    let urls = {
+        let config = store.config.lock().unwrap();
+        if config.relay_urls.is_empty() {
+            config.default_relay_urls.clone()
+        } else {
+            config.relay_urls.clone()
+        }
+    };
+
+    // Create a single client for all relays
+    let client = nostr_sdk::Client::new(keys);
+
+    // Add all relays
+    for url in &urls {
+        if let Err(e) = client.add_relay(url).await {
+            println!("Failed to add relay {}: {}", url, e);
+        }
+    }
+
+    // Connect to all relays
+    client.connect().await;
+
+    // Send event to all connected relays
+    if let Err(e) = client.send_event(&event).await {
+        println!("Failed to send event: {}", e);
+    }
+
+    // Disconnect from all relays
+    let _ = client.disconnect().await;
 
     Ok((event.id.to_string(), event_json))
 }
@@ -259,7 +375,7 @@ async fn save_diary_entry(
 
     // Create Nostr event - use await
     let (nostr_id, nostr_event_json) =
-        create_nostr_event(&keys, &content, &weather, &entry_day).await?;
+        create_nostr_event(keys, &content, &weather, &entry_day, &store).await?;
 
     let entry = DiaryEntry {
         id: Uuid::new_v4().to_string(),
@@ -451,14 +567,16 @@ pub struct CommonDiary {
 // Function to list all common diary files
 fn list_common_diary_files() -> Result<Vec<PathBuf>, String> {
     let common_diaries_dir = get_common_diaries_dir();
-    
+
     match fs::read_dir(&common_diaries_dir) {
         Ok(entries) => {
             let files: Vec<PathBuf> = entries
                 .filter_map(|entry| {
                     if let Ok(entry) = entry {
                         let path = entry.path();
-                        if path.is_file() && path.extension().and_then(|ext| ext.to_str()) == Some("json") {
+                        if path.is_file()
+                            && path.extension().and_then(|ext| ext.to_str()) == Some("json")
+                        {
                             Some(path)
                         } else {
                             None
@@ -469,7 +587,7 @@ fn list_common_diary_files() -> Result<Vec<PathBuf>, String> {
                 })
                 .collect();
             Ok(files)
-        },
+        }
         Err(e) => Err(format!("Failed to read common diaries directory: {}", e)),
     }
 }
@@ -497,12 +615,12 @@ fn save_common_diary_to_cache(diary: &CommonDiary) -> SqlResult<()> {
     let conn = DB_CONNECTION.lock().unwrap();
     let data = serde_json::to_string(&diary).unwrap();
     let now = Utc::now().to_rfc3339();
-    
+
     conn.execute(
         "INSERT OR REPLACE INTO common_diaries_cache (author, data, last_modified) VALUES (?1, ?2, ?3)",
         params![diary.author, data, now]
     )?;
-    
+
     println!("Saved diary with author '{}' to cache", diary.author);
     Ok(())
 }
@@ -511,7 +629,7 @@ fn save_common_diary_to_cache(diary: &CommonDiary) -> SqlResult<()> {
 fn load_all_common_diaries_from_cache() -> SqlResult<Vec<CommonDiary>> {
     let conn = DB_CONNECTION.lock().unwrap();
     let mut stmt = conn.prepare("SELECT data FROM common_diaries_cache")?;
-    
+
     let diaries_iter = stmt.query_map([], |row| {
         let data: String = row.get(0)?;
         match serde_json::from_str::<CommonDiary>(&data) {
@@ -522,7 +640,7 @@ fn load_all_common_diaries_from_cache() -> SqlResult<Vec<CommonDiary>> {
             }
         }
     })?;
-    
+
     let mut diaries = Vec::new();
     for diary_result in diaries_iter {
         match diary_result {
@@ -530,7 +648,7 @@ fn load_all_common_diaries_from_cache() -> SqlResult<Vec<CommonDiary>> {
             Err(e) => println!("Error retrieving diary from cache: {}", e),
         }
     }
-    
+
     println!("Loaded {} diaries from cache", diaries.len());
     Ok(diaries)
 }
@@ -544,40 +662,39 @@ fn is_cache_up_to_date() -> bool {
             if files.is_empty() {
                 return true; // No files to process, cache is "up to date"
             }
-            
+
             // Store the file count for later
             let file_count = files.len();
-            
+
             // Get the latest modification time from the database
             let conn = DB_CONNECTION.lock().unwrap();
             let latest_mod_time: Result<Option<String>, rusqlite::Error> = conn.query_row(
                 "SELECT MAX(last_modified) FROM common_diaries_cache",
                 [],
-                |row| row.get(0)
+                |row| row.get(0),
             );
-            
+
             // If we don't have any cached entries, cache is not up to date
             let latest_mod_time = match latest_mod_time {
                 Ok(Some(time)) => time,
                 _ => return false,
             };
-            
+
             // Parse the time
             let cache_time = match DateTime::parse_from_rfc3339(&latest_mod_time) {
                 Ok(time) => time.with_timezone(&Utc),
                 Err(_) => return false,
             };
-            
+
             // Check if any file is newer than our cache
             for file_path in files {
                 if let Ok(metadata) = fs::metadata(&file_path) {
                     if let Ok(modified) = metadata.modified() {
                         if let Ok(file_time) = modified.duration_since(std::time::UNIX_EPOCH) {
-                            let file_datetime = Utc.timestamp_opt(
-                                file_time.as_secs() as i64, 
-                                file_time.subsec_nanos()
-                            ).unwrap();
-                            
+                            let file_datetime = Utc
+                                .timestamp_opt(file_time.as_secs() as i64, file_time.subsec_nanos())
+                                .unwrap();
+
                             // If file is newer than cache, cache is not up to date
                             if file_datetime > cache_time {
                                 println!("File {} is newer than cache", file_path.display());
@@ -587,24 +704,26 @@ fn is_cache_up_to_date() -> bool {
                     }
                 }
             }
-            
+
             // Also check if we have the same number of diaries in cache as files
-            let count: i64 = match conn.query_row(
-                "SELECT COUNT(*) FROM common_diaries_cache",
-                [],
-                |row| row.get(0)
-            ) {
-                Ok(count) => count,
-                Err(_) => return false,
-            };
-            
+            let count: i64 =
+                match conn.query_row("SELECT COUNT(*) FROM common_diaries_cache", [], |row| {
+                    row.get(0)
+                }) {
+                    Ok(count) => count,
+                    Err(_) => return false,
+                };
+
             if count as usize != file_count {
-                println!("Number of cached diaries ({}) differs from number of files ({})", count, file_count);
+                println!(
+                    "Number of cached diaries ({}) differs from number of files ({})",
+                    count, file_count
+                );
                 return false;
             }
-            
+
             true
-        },
+        }
         Err(e) => {
             println!("Error listing diary files: {}", e);
             false
@@ -628,19 +747,24 @@ fn list_common_diaries() -> Result<Vec<CommonDiary>, String> {
         // Try to load from cache
         match load_all_common_diaries_from_cache() {
             Ok(diaries) if !diaries.is_empty() => {
-                println!("Returning {} common diaries from SQLite cache", diaries.len());
+                println!(
+                    "Returning {} common diaries from SQLite cache",
+                    diaries.len()
+                );
                 return Ok(diaries);
             }
             _ => {
-                println!("Cache check indicated up-to-date but got empty result, reloading from files");
+                println!(
+                    "Cache check indicated up-to-date but got empty result, reloading from files"
+                );
             }
         }
     }
-    
+
     // If cache is not up to date or got empty results, load from files
     println!("Loading common diaries from files");
     let files = list_common_diary_files()?;
-    
+
     let mut diaries = Vec::new();
     for file_path in files {
         match load_common_diary(&file_path) {
@@ -651,11 +775,18 @@ fn list_common_diaries() -> Result<Vec<CommonDiary>, String> {
                 }
                 diaries.push(diary);
             }
-            Err(e) => println!("Failed to load common diary from {}: {}", file_path.display(), e),
+            Err(e) => println!(
+                "Failed to load common diary from {}: {}",
+                file_path.display(),
+                e
+            ),
         }
     }
-    
-    println!("Loaded and cached {} common diaries from files", diaries.len());
+
+    println!(
+        "Loaded and cached {} common diaries from files",
+        diaries.len()
+    );
     Ok(diaries)
 }
 
@@ -670,17 +801,17 @@ fn get_common_diaries_dir_path() -> String {
 #[tauri::command]
 fn refresh_common_diaries_cache() -> Result<(), String> {
     println!("Refreshing common diaries cache");
-    
+
     // Clear existing cache
     match clear_common_diaries_cache() {
         Ok(_) => (),
         Err(e) => return Err(format!("Failed to clear common diaries cache: {}", e)),
     }
-    
+
     // Reload files and rebuild cache
     println!("Reloading common diaries from files");
     let files = list_common_diary_files()?;
-    
+
     let mut diary_count = 0;
     for file_path in files {
         match load_common_diary(&file_path) {
@@ -692,101 +823,115 @@ fn refresh_common_diaries_cache() -> Result<(), String> {
                     diary_count += 1;
                 }
             }
-            Err(e) => println!("Failed to load common diary from {}: {}", file_path.display(), e),
+            Err(e) => println!(
+                "Failed to load common diary from {}: {}",
+                file_path.display(),
+                e
+            ),
         }
     }
-    
-    println!("Refreshed cache with {} common diaries from files", diary_count);
+
+    println!(
+        "Refreshed cache with {} common diaries from files",
+        diary_count
+    );
     Ok(())
 }
 
 #[tauri::command]
 fn get_common_diaries_cache_status() -> Result<String, String> {
     let conn = DB_CONNECTION.lock().unwrap();
-    
+
     // Count the number of cached diaries
-    let count: i64 = match conn.query_row(
-        "SELECT COUNT(*) FROM common_diaries_cache",
-        [],
-        |row| row.get(0)
-    ) {
+    let count: i64 = match conn.query_row("SELECT COUNT(*) FROM common_diaries_cache", [], |row| {
+        row.get(0)
+    }) {
         Ok(count) => count,
         Err(e) => return Err(format!("Failed to count cached diaries: {}", e)),
     };
-    
+
     // Get the latest modification time
     let latest_mod_time: Result<Option<String>, rusqlite::Error> = conn.query_row(
         "SELECT MAX(last_modified) FROM common_diaries_cache",
         [],
-        |row| row.get(0)
+        |row| row.get(0),
     );
-    
+
     let latest_mod_time = match latest_mod_time {
         Ok(Some(time)) => {
             // Parse the full timestamp into a more readable format
             match DateTime::parse_from_rfc3339(&time) {
                 Ok(dt) => dt.format("%Y-%m-%d %H:%M:%S").to_string(),
-                Err(_) => time
+                Err(_) => time,
             }
-        },
+        }
         Ok(None) => "未缓存".to_string(),
         Err(e) => return Err(format!("Failed to get latest modification time: {}", e)),
     };
-    
+
     // Count the actual files in directory for comparison
     let file_count = match list_common_diary_files() {
         Ok(files) => files.len() as i64,
         Err(_) => -1,
     };
-    
+
     // Create a more informative status message
     let status = if count == 0 {
-        if file_count > 0 {
-            format!("有 {} 个日记文件需要缓存，但当前缓存为空", file_count)
-        } else if file_count == 0 {
-            "日记目录中没有文件，缓存为空".to_string()
-        } else {
-            "缓存为空，无法读取日记目录".to_string()
+        match file_count.cmp(&0) {
+            std::cmp::Ordering::Greater => {
+                format!("有 {} 个日记文件需要缓存，但当前缓存为空", file_count)
+            }
+            std::cmp::Ordering::Equal => "日记目录中没有文件，缓存为空".to_string(),
+            std::cmp::Ordering::Less => "缓存为空，无法读取日记目录".to_string(),
         }
     } else if count == file_count {
-        format!("缓存完整：已缓存 {} 个日记文件，最后更新于 {}", count, latest_mod_time)
+        format!(
+            "缓存完整：已缓存 {} 个日记文件，最后更新于 {}",
+            count, latest_mod_time
+        )
     } else {
-        format!("缓存不完整：已缓存 {} 个日记文件，目录中有 {} 个文件，最后更新于 {}", 
-               count, file_count, latest_mod_time)
+        format!(
+            "缓存不完整：已缓存 {} 个日记文件，目录中有 {} 个文件，最后更新于 {}",
+            count, file_count, latest_mod_time
+        )
     };
-    
+
     Ok(status)
 }
 
 #[tauri::command]
 async fn download_common_diaries() -> Result<(), String> {
     println!("Downloading common diaries from GitHub");
-    
+
     // 获取名人日记目录
     let target_dir = get_common_diaries_dir();
-    
+
     // 从GitHub原始内容URL下载文件
     let base_url = "https://raw.githubusercontent.com/RetricSu/luxun-dairy/master/common-diary";
-    let diaries = ["luxun_common_diary.json", "dongpo_zhilin_common_diary.json", "xuxiake_travel_common_diary.json"];
-    
+    let diaries = [
+        "luxun_common_diary.json",
+        "dongpo_zhilin_common_diary.json",
+        "xuxiake_travel_common_diary.json",
+    ];
+
     // 下载每个文件
     for diary_name in diaries.iter() {
         let file_url = format!("{}/{}", base_url, diary_name);
         println!("Downloading {}", file_url);
-        
+
         // 创建目标文件路径
         let target_path = target_dir.join(diary_name);
-        
+
         // 下载文件
         match download_file(&file_url, &target_path).await {
             Ok(_) => println!("Successfully downloaded {}", diary_name),
             Err(e) => println!("Failed to download {}: {}", diary_name, e),
         }
     }
-    
+
     // 刷新缓存
     refresh_common_diaries_cache()?;
-    
+
     println!("Common diaries downloaded successfully");
     Ok(())
 }
@@ -797,20 +942,50 @@ async fn download_file(url: &str, target_path: &PathBuf) -> Result<(), String> {
     let response = reqwest::get(url)
         .await
         .map_err(|e| format!("Failed to download file: {}", e))?;
-    
+
     if !response.status().is_success() {
-        return Err(format!("Failed to download file, status: {}", response.status()));
+        return Err(format!(
+            "Failed to download file, status: {}",
+            response.status()
+        ));
     }
-    
+
     let content = response
         .bytes()
         .await
         .map_err(|e| format!("Failed to read response content: {}", e))?;
-    
+
     // 保存文件
-    std::fs::write(target_path, content)
-        .map_err(|e| format!("Failed to save file: {}", e))?;
-    
+    std::fs::write(target_path, content).map_err(|e| format!("Failed to save file: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+fn get_config(store: State<Arc<DiaryStore>>) -> Result<Config, String> {
+    let config = store.config.lock().unwrap();
+    Ok(config.clone())
+}
+
+#[tauri::command]
+fn update_config(store: State<Arc<DiaryStore>>, new_config: Config) -> Result<(), String> {
+    println!("Updating config with: {:?}", new_config);
+
+    // Validate relay URLs
+    for url in &new_config.relay_urls {
+        if !url.starts_with("wss://") && !url.starts_with("ws://") {
+            return Err(format!("Invalid relay URL: {}", url));
+        }
+    }
+
+    // Save to file
+    save_config(&new_config)?;
+
+    // Update in-memory config
+    let mut config = store.config.lock().unwrap();
+    *config = new_config;
+    println!("Config updated successfully");
+
     Ok(())
 }
 
@@ -822,9 +997,14 @@ pub fn run() {
     Lazy::force(&DB_CONNECTION);
     println!("Database initialized");
 
+    // Load config
+    let config = load_config().unwrap_or_default();
+    println!("Configuration loaded");
+
     // Initialize diary store
     let diary_store = Arc::new(DiaryStore {
         nostr_keys: Mutex::new(None),
+        config: Mutex::new(config),
     });
 
     tauri::Builder::default()
@@ -844,6 +1024,13 @@ pub fn run() {
             refresh_common_diaries_cache,
             get_common_diaries_cache_status,
             download_common_diaries,
+            get_config,
+            update_config,
+            // Add the new gift wrap service commands
+            gift_wrap_service::gift_wrap_diary,
+            gift_wrap_service::share_gift_wrap,
+            gift_wrap_service::validate_pubkey,
+            gift_wrap_service::fetch_gift_wraps,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

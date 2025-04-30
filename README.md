@@ -23,9 +23,7 @@
 
 ## TODO
 
-- [ ] 增加分享月历图片功能
-- [ ] 增加分享单天日记图片功能
-- [ ] 增加分享单条日记给某个 Nostr 用户功能
+- [x] 增加分享单条日记给某个 Nostr 用户功能
 - [x] 增加更多文学日记：苏轼、徐霞客
 - [ ] 更新数据库结构，年/月/日键值对
 
@@ -52,3 +50,34 @@ Example files can be found in the `common-diary` directory of the project.
 ## Recommended IDE Setup
 
 - [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+
+## Nostr 加密分享功能
+
+应用使用 Nostr 的 NIP-59 Gift Wrap 标准实现了加密日记分享功能。这允许您安全地与朋友私密分享特定的日记条目，确保只有指定的接收方可以阅读内容。
+
+### 实现细节
+
+加密分享功能在后端使用 nostr-sdk Rust 库实现，遵循以下 Nostr 协议标准：
+
+- **NIP-59 Gift Wrap**: 将日记内容封装在加密的"礼品包装"中
+- **NIP-44 加密**: 提供端到端的安全加密
+- **NIP-04/NIP-17**: 用于私密消息交换
+
+加密过程包含三个主要步骤：
+1. 将日记条目转换为未签名的 Nostr 事件（称为"rumor"）
+2. 使用发送者的私钥加密并签名这个事件（称为"seal"）
+3. 使用一次性密钥将已加密内容再次封装，并包含接收者的公钥（称为"gift wrap"）
+
+### 如何使用
+
+1. 在查看已完成的日记条目时，点击"加密分享日记"按钮
+2. 输入接收方的 Nostr 公钥（十六进制格式）
+3. 点击"创建 Gift Wrap"按钮
+4. 选择一个 Nostr 中继服务器 URL（默认为 `wss://relay.damus.io/`）
+5. 点击"分享到中继"按钮
+
+接收方可以使用兼容 NIP-59 的 Nostr 客户端打开您的加密日记。
+
+## 数据格式
+
+应用使用统一的 Common Diary 格式存储日记数据。详细格式说明请参阅 [Common Diary 文档](./common-diary/README.md)。
