@@ -1,7 +1,6 @@
 import { useState } from "preact/hooks";
 import { shortenKey } from "../utils/helpers";
 import { verifyNostrSignature } from "../utils/diaryService";
-import GiftWrapShare from "./GiftWrapShare";
 
 interface NostrEventViewerProps {
   selectedNostrEvent: string;
@@ -17,7 +16,6 @@ export function NostrEventViewer({
   isOwnEvent = true,
 }: NostrEventViewerProps) {
   const [verificationResult, setVerificationResult] = useState<{status: 'idle' | 'loading' | 'success' | 'error'; message?: string}>({ status: 'idle' });
-  const [isGiftWrapOpen, setIsGiftWrapOpen] = useState(false);
 
   const handleVerifySignature = async () => {
     try {
@@ -35,35 +33,6 @@ export function NostrEventViewer({
     }
   };
 
-  // Create a diary entry object for the GiftWrapShare component
-  const diaryEntryFromNostr = {
-    nostr_id: selectedNostrEvent,
-    day: '',  // The actual date will be shown in the GiftWrapShare component from the event data
-    content: '',
-    weather: '',
-    id: '0',
-    created_at: new Date().toISOString()
-  };
-
-  try {
-    // Try to parse the event to extract date information
-    const event = JSON.parse(nostrEventData);
-    // Find date tag if available
-    const dateTag = event.tags.find((tag: any) => tag[0] === 'd');
-    if (dateTag && dateTag[1]) {
-      diaryEntryFromNostr.day = dateTag[1];
-    }
-    // Find weather tag if available
-    const weatherTag = event.tags.find((tag: any) => tag[0] === 'weather');
-    if (weatherTag && weatherTag[1]) {
-      diaryEntryFromNostr.weather = weatherTag[1];
-    }
-    // Set content preview
-    diaryEntryFromNostr.content = event.content.substring(0, 200) + (event.content.length > 200 ? '...' : '');
-  } catch (e) {
-    // Ignore parsing errors
-  }
-
   return (
     <div className="bg-white dark:bg-[#262624] rounded-md shadow-md border border-[#e6dfd3] dark:border-border-dark overflow-hidden">
       <div className="flex justify-between items-center px-6 py-4 border-b border-[#e6dfd3] dark:border-border-dark bg-[#f9f6f0] dark:bg-[#2a2a28]">
@@ -77,12 +46,6 @@ export function NostrEventViewer({
                 disabled={verificationResult.status === 'loading'}
               >
                 {verificationResult.status === 'loading' ? '验证中...' : '验证签名'}
-              </button>
-              <button 
-                className="bg-[#f0ebe2] dark:bg-[#2a2a28] text-[#7c6d58] dark:text-text-secondary-dark text-sm py-1 px-3 border border-[#d9d0c1] dark:border-border-dark rounded hover:bg-[#e6dfd3] dark:hover:bg-[#333331]"             
-                onClick={() => setIsGiftWrapOpen(true)}
-              >
-                加密分享
               </button>
             </>
           ) : (
@@ -150,13 +113,6 @@ export function NostrEventViewer({
           }
         })()}
       </div>
-
-      {/* Gift Wrap Modal */}
-      <GiftWrapShare
-        entry={diaryEntryFromNostr}
-        isOpen={isGiftWrapOpen}
-        onClose={() => setIsGiftWrapOpen(false)}
-      />
     </div>
   );
 } 

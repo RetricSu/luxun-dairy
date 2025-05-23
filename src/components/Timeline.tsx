@@ -1,5 +1,7 @@
+import { useState } from "preact/hooks";
 import { DiaryEntry } from "../types";
 import { formatShortDate, groupEntriesByYear, shortenKey } from "../utils/helpers";
+import GiftWrapShare from "./GiftWrapShare";
 
 interface TimelineProps {
   entries: DiaryEntry[];
@@ -7,6 +9,14 @@ interface TimelineProps {
 }
 
 export function Timeline({ entries, viewNostrEvent }: TimelineProps) {
+  const [isGiftWrapOpen, setIsGiftWrapOpen] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
+
+  const handleGiftWrapOpen = (entry: DiaryEntry) => {
+    setSelectedEntry(entry);
+    setIsGiftWrapOpen(true);
+  };
+
   if (entries.length === 0) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -50,6 +60,12 @@ export function Timeline({ entries, viewNostrEvent }: TimelineProps) {
                       >
                         查看
                       </button>
+                      <button 
+                        className="ml-1 bg-[#f7f5f0] dark:bg-[#262630] text-[#6d6a5c] dark:text-[#a2e2d8] text-xs py-0.5 px-2 border border-[#e6e1d5] dark:border-[#323237] rounded-full hover:bg-[#f0ede6] dark:hover:bg-[#2a2a32] transition-colors"
+                        onClick={() => handleGiftWrapOpen(entry)}
+                      >
+                        加密分享
+                      </button>
                     </span>
                   )}
                 </div>
@@ -63,6 +79,15 @@ export function Timeline({ entries, viewNostrEvent }: TimelineProps) {
           ))}
         </div>
       ))}
+      
+      {/* Gift Wrap Modal */}
+      {selectedEntry && (
+        <GiftWrapShare
+          entry={selectedEntry}
+          isOpen={isGiftWrapOpen}
+          onClose={() => setIsGiftWrapOpen(false)}
+        />
+      )}
     </div>
   );
 } 
