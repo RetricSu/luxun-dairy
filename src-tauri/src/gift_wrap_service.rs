@@ -4,7 +4,7 @@ use nostr_sdk::{
     Alphabet, ClientBuilder, Event, EventBuilder, Filter, Keys, Kind, PublicKey, SingleLetterTag,
     Timestamp, UnsignedEvent,
 };
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -41,7 +41,7 @@ fn random_past_timestamp() -> u64 {
         .as_secs();
 
     let two_days_secs = 2 * 24 * 60 * 60;
-    let random_offset = thread_rng().gen_range(0..two_days_secs);
+    let random_offset = rng().random_range(0..two_days_secs);
 
     now - random_offset
 }
