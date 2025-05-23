@@ -1,92 +1,29 @@
-# Gift Wrap Feature Documentation
+# Nostr 日记加密分享
 
-## Overview
+本应用支持使用 Nostr 协议的 NIP-59（Gift Wrap）标准对您的日记条目进行加密分享。这使您可以安全地与朋友私密地分享特定的日记条目，同时确保只有指定的接收方可以阅读内容。
 
-The Gift Wrap feature in Luxun Dairy enables users to privately share specific diary entries with other Nostr users. This feature utilizes NIP-59's Gift Wrap protocol to create encrypted messages that can only be read by the intended recipient.
+## 加密分享功能
 
-## How Gift Wrap Works
+加密分享功能使用了 Nostr 的以下标准：
 
-1. **Encryption**: The diary entry is encrypted specifically for the recipient's public key.
-2. **Obfuscation**: A random timestamp (up to 2 days in the past) is used to prevent correlation attacks.
-3. **Private Delivery**: The gift-wrapped entry is sent directly to the recipient via Nostr relays.
+- **NIP-59 Gift Wrap**: 将日记内容封装在一个加密的"礼品包装"中
+- **NIP-44 加密**: 提供端到端的安全加密
 
-## Technical Details
+## 如何使用加密分享
 
-### Event Types
+1. 在查看已完成的日记条目时，点击"加密分享日记"按钮
+2. 输入接收方的 Nostr 公钥（十六进制格式）
+3. 点击"创建 Gift Wrap"按钮
+4. 选择一个 Nostr 中继服务器 URL（默认为 `wss://relay.damus.io/`）
+5. 点击"分享到中继"按钮
 
-- The gift-wrapped event uses Kind `30027` which is designated for our diary entries
-- The gift wrap uses NIP-59's protocol to ensure only the recipient can decrypt the content
+## 实现细节
 
-### Privacy Measures
+加密分享功能在后端使用 nostr-sdk Rust 库实现，分享过程包含以下步骤：
 
-- Original entry timestamp is replaced with a random timestamp
-- The sender's identity is preserved but the content is encrypted
-- Only the recipient with the matching private key can decrypt the content
+1. 将您的日记条目转换为未签名的 Nostr 事件（称为"rumor"）
+2. 使用您的私钥对其进行加密并签名（称为"seal"）
+3. 将已加密和签名的内容包装在一个随机账户签名的 gift wrap 事件中
+4. 将 gift wrap 事件发送到指定的 Nostr 中继服务器
 
-### Implementation
-
-The feature consists of two main components:
-
-1. **Gift Wrap Creation**: Creates an encrypted version of a diary entry specifically for a recipient
-2. **Gift Wrap Sharing**: Publishes the encrypted event to Nostr relays
-
-## User Flow
-
-1. User selects a diary entry to share
-2. User enters the recipient's Nostr public key
-3. The system validates the public key format
-4. The entry is encrypted (gift-wrapped) for the recipient
-5. User can then share the gift-wrapped entry through Nostr relays
-
-## API Reference
-
-### Gift Wrap Creation
-
-```rust
-#[tauri::command]
-pub async fn gift_wrap_diary(
-    store: State<'_, Arc<DiaryStore>>,
-    request: GiftWrapRequest,
-) -> Result<GiftWrapResponse, String>
-```
-
-#### Parameters:
-- `GiftWrapRequest` containing:
-  - `nostr_id`: ID of the diary entry to share
-  - `recipient_pubkey`: Nostr public key of the recipient
-
-#### Returns:
-- `GiftWrapResponse` containing:
-  - `gift_wrap_event`: The encrypted event as JSON
-  - `gift_wrap_id`: The ID of the gift-wrapped event
-
-### Gift Wrap Sharing
-
-```rust
-#[tauri::command]
-pub async fn share_gift_wrap(
-    gift_wrap_json: String,
-    relay_url: String,
-) -> Result<String, String>
-```
-
-#### Parameters:
-- `gift_wrap_json`: The JSON representation of the gift-wrapped event
-- `relay_url`: The URL of the Nostr relay to publish to
-
-#### Returns:
-- A success message with the event ID when successful
-- An error message if sharing fails
-
-## Security Considerations
-
-- The gift wrap feature uses public key cryptography to ensure only the intended recipient can read the shared diary entry
-- Random timestamps help prevent correlation of the original diary entry with the shared version
-- No plaintext content is exposed in the transmission process
-
-## Future Enhancements
-
-- Support for multiple recipients
-- Read receipts for shared entries
-- Ability to revoke shared entries
-- UI enhancements for tracking shared entries 
+接收方可以使用兼容 NIP-59 的 Nostr 客户端打开您的加密日记。

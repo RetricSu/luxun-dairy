@@ -95,3 +95,25 @@ button,
 .highlight-entry {
   animation: highlight-pulse 1.5s ease-out;
 }
+
+/* 自定义文本选择样式 */
+::selection {
+  background-color: rgba(73, 179, 161, 0.2); /* 浅色主题：主色调的淡版本 */
+  color: #2c5d55; /* 深一些的绿色文字 */
+}
+
+::-moz-selection {
+  background-color: rgba(73, 179, 161, 0.2);
+  color: #2c5d55;
+}
+
+/* 深色主题的文本选择样式 */
+html.dark ::selection {
+  background-color: rgba(93, 175, 163, 0.3); /* 深色主题：稍微亮一些的选择背景 */
+  color: #a2e2d8; /* 保持深色主题的主文字色 */
+}
+
+html.dark ::-moz-selection {
+  background-color: rgba(93, 175, 163, 0.3);
+  color: #a2e2d8;
+}

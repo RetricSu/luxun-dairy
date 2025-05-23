@@ -1,8 +1,45 @@
-# 鲁迅日记 GitHub CI/CD
+# 构建和开发
 
-本项目使用 GitHub Actions 进行持续集成和部署。以下是可用的工作流程：
+## 开发环境设置
+
+1. 安装依赖：
+   ```bash
+   pnpm install
+   ```
+
+2. 启动开发服务器：
+   ```bash
+   pnpm dev
+   ```
+
+### 本地构建
+
+我们提供了便捷的构建脚本来帮助您在本地测试构建：
+
+### Linux/macOS
+```bash
+./scripts/test-build.sh
+```
+
+### Windows
+```powershell
+.\scripts\test-build.ps1
+```
+
+这些脚本会自动检测您的平台并使用正确的目标架构进行构建。
+
+### 发布构建
+
+应用使用 GitHub Actions 自动进行多平台构建和发布。CI/CD 流程的主要特点：
+
+- **多平台支持**：自动构建 Windows (x64)、macOS (x64/ARM64) 和 Linux (x64) 版本
+- **容错机制**：即使某个平台构建失败，其他成功的平台仍会发布到 release
+- **Windows 兼容性**：使用 NSIS 安装器替代 WiX，解决 Windows 构建问题
+- **自动发布**：构建成功后自动发布 GitHub Release
 
 ## 持续集成 (CI)
+
+本项目使用 GitHub Actions 进行持续集成和部署。以下是可用的工作流程：
 
 当代码推送到 main/master 分支或对这些分支提交 Pull Request 时，CI 工作流将自动运行。它会：
 

@@ -156,30 +156,32 @@ export const FriendDiaryReader = (): ComponentChildren => {
               <div>
                 {selectedFriendData.entries.map((entry) => (
                   <div key={entry.id} className="mb-8 pb-6 bg-white dark:bg-[#1a1a1e] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 border border-[#e9e4d9] dark:border-[#2c2c32] p-5">
-                    <div className="flex items-center pb-3 mb-4 border-b border-[#e9e4d9] dark:border-[#2c2c32] text-sm">
-                      <span className="text-[#49818b] dark:text-[#49818b] font-medium mr-3">
-                        {new Date(entry.date).toLocaleDateString('zh-CN', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
-                      </span>
-                      <span className="text-[#718328] dark:text-[#d0e57e] font-medium">
-                        {entry.weather}
-                      </span>
-                      <span className="text-[#9c9b95] dark:text-[#717b7a] text-xs ml-auto flex items-center">
-                        <span className="hidden sm:inline">ID: {shortenKey(entry.id)}</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center pb-3 mb-4 border-b border-[#e9e4d9] dark:border-[#2c2c32] text-sm gap-2">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#49818b] dark:text-[#49818b] font-medium">
+                          {new Date(entry.date).toLocaleDateString('zh-CN', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })}
+                        </span>
+                        <span className="text-[#718328] dark:text-[#d0e57e] font-medium">
+                          {entry.weather}
+                        </span>
+                      </div>
+                      <div className="text-[#9c9b95] dark:text-[#717b7a] text-xs sm:ml-auto flex flex-wrap items-center gap-2">
+                        <span className="hidden sm:inline break-all">ID: {shortenKey(entry.id)}</span>
                         <button 
-                          className="ml-2 bg-[#f7f5f0] dark:bg-[#262630] text-[#6d6a5c] dark:text-[#a2e2d8] text-xs py-0.5 px-2 border border-[#e6e1d5] dark:border-[#323237] rounded-full hover:bg-[#f0ede6] dark:hover:bg-[#2a2a32] transition-colors"
+                          className="bg-[#f7f5f0] dark:bg-[#262630] text-[#6d6a5c] dark:text-[#a2e2d8] text-xs py-0.5 px-2 border border-[#e6e1d5] dark:border-[#323237] rounded-full hover:bg-[#f0ede6] dark:hover:bg-[#2a2a32] transition-colors whitespace-nowrap"
                           onClick={() => handleViewOriginal(entry.id)}
                         >
                           查看
                         </button>
-                      </span>
+                      </div>
                     </div>
                     <div className="text-[#2c2c2a] dark:text-[#e9e9e7] leading-7 font-normal">
                       {entry.content.split("\n").map((line, i) => (
-                        <p key={i} className="mb-2 last:mb-0">{line}</p>
+                        <p key={i} className="mb-2 last:mb-0 break-words">{line}</p>
                       ))}
                     </div>
                   </div>

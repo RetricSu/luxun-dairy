@@ -1,5 +1,7 @@
+import { useState } from "preact/hooks";
 import { DiaryEntry } from "../types";
 import { formatShortDate, groupEntriesByYear, shortenKey } from "../utils/helpers";
+import GiftWrapShare from "./GiftWrapShare";
 
 interface TimelineProps {
   entries: DiaryEntry[];
@@ -7,6 +9,14 @@ interface TimelineProps {
 }
 
 export function Timeline({ entries, viewNostrEvent }: TimelineProps) {
+  const [isGiftWrapOpen, setIsGiftWrapOpen] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
+
+  const handleGiftWrapOpen = (entry: DiaryEntry) => {
+    setSelectedEntry(entry);
+    setIsGiftWrapOpen(true);
+  };
+
   if (entries.length === 0) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -38,24 +48,34 @@ export function Timeline({ entries, viewNostrEvent }: TimelineProps) {
                 <div className="absolute top-3 right-[-6px] w-3 h-3 bg-gradient-to-r from-[#49b3a1] to-[#3a9e8d] dark:from-[#43a595] dark:to-[#389384] rounded-full transform translate-x-1/2 z-10"></div>
               </div>
               <div className="flex-1 bg-white dark:bg-[#1a1a1e] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 border border-[#e9e4d9] dark:border-[#2c2c32] p-5 ml-6">
-                <div className="flex items-center pb-2 mb-3 border-b border-[#f0ede4] dark:border-[#2a2a30] text-sm">
-                  <span className="text-[#49818b] dark:text-[#49818b] font-medium mr-3">{formatShortDate(entry.day)}</span>
-                  <span className="text-[#718328] dark:text-[#d0e57e] font-medium">{entry.weather}</span>
+                <div className="flex flex-col sm:flex-row sm:items-center pb-2 mb-3 border-b border-[#f0ede4] dark:border-[#2a2a30] text-sm gap-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[#49818b] dark:text-[#49818b] font-medium">{formatShortDate(entry.day)}</span>
+                    <span className="text-[#718328] dark:text-[#d0e57e] font-medium">{entry.weather}</span>
+                  </div>
                   {entry.nostr_id && (
-                    <span className="text-[#9c9b95] dark:text-[#717b7a] text-xs ml-auto flex items-center">
-                      <span className="hidden sm:inline">Nostr: {shortenKey(entry.nostr_id)}</span>
-                      <button 
-                        className="ml-2 bg-[#f7f5f0] dark:bg-[#262630] text-[#6d6a5c] dark:text-[#a2e2d8] text-xs py-0.5 px-2 border border-[#e6e1d5] dark:border-[#323237] rounded-full hover:bg-[#f0ede6] dark:hover:bg-[#2a2a32] transition-colors"
-                        onClick={() => viewNostrEvent(entry.nostr_id as string)}
-                      >
-                        查看
-                      </button>
-                    </span>
+                    <div className="text-[#9c9b95] dark:text-[#717b7a] text-xs sm:ml-auto flex flex-wrap items-center gap-2">
+                      <span className="hidden sm:inline break-all">Nostr: {shortenKey(entry.nostr_id)}</span>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button 
+                          className="bg-[#f7f5f0] dark:bg-[#262630] text-[#6d6a5c] dark:text-[#a2e2d8] text-xs py-0.5 px-2 border border-[#e6e1d5] dark:border-[#323237] rounded-full hover:bg-[#f0ede6] dark:hover:bg-[#2a2a32] transition-colors whitespace-nowrap"
+                          onClick={() => viewNostrEvent(entry.nostr_id as string)}
+                        >
+                          查看
+                        </button>
+                        <button 
+                          className="bg-[#f7f5f0] dark:bg-[#262630] text-[#6d6a5c] dark:text-[#a2e2d8] text-xs py-0.5 px-2 border border-[#e6e1d5] dark:border-[#323237] rounded-full hover:bg-[#f0ede6] dark:hover:bg-[#2a2a32] transition-colors whitespace-nowrap"
+                          onClick={() => handleGiftWrapOpen(entry)}
+                        >
+                          加密分享
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
                 <div className="text-[#2c2c2a] dark:text-[#e9e9e7] leading-7 font-normal">
                   {entry.content.split("\n").map((line, i) => (
-                    <p key={i} className="mb-2 last:mb-0">{line}</p>
+                    <p key={i} className="mb-2 last:mb-0 break-words">{line}</p>
                   ))}
                 </div>
               </div>
@@ -63,6 +83,15 @@ export function Timeline({ entries, viewNostrEvent }: TimelineProps) {
           ))}
         </div>
       ))}
+      
+      {/* Gift Wrap Modal */}
+      {selectedEntry && (
+        <GiftWrapShare
+          entry={selectedEntry}
+          isOpen={isGiftWrapOpen}
+          onClose={() => setIsGiftWrapOpen(false)}
+        />
+      )}
     </div>
   );
 } 

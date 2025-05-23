@@ -395,7 +395,7 @@ export function CommonDiaryReader({ diary }: CommonDiaryReaderProps) {
           {/* 日记内容 */}
           <div className="text-[#2c2c2a] dark:text-[#e9e9e7] font-normal">
             {entry.content.split("\n").map((line, i) => (
-              <p key={i} className="mb-4 last:mb-0">{line}</p>
+              <p key={i} className="mb-4 last:mb-0 break-words">{line}</p>
             ))}
           </div>
         </div>
