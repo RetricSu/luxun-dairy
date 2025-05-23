@@ -40,26 +40,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-latest, ubuntu-latest, windows-latest]
         include:
           - platform: macos-latest
             target: x86_64-apple-darwin
             arch: x64
+            os: macos
           - platform: macos-latest
             target: aarch64-apple-darwin
             arch: arm64
+            os: macos
           - platform: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             arch: x64
+            os: linux
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
             arch: x64
-        exclude:
-          - platform: macos-latest
-            # remove the duplicate entry without target/arch
+            os: windows
           
     runs-on: ${{ matrix.platform }}
-    continue-on-error: true
+    outputs:
+      build_success: ${{ steps.build-result.outputs.success }}
     steps:
       - uses: actions/checkout@v4
 
@@ -85,49 +86,78 @@ jobs:
         run: pnpm install
 
       - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-latest'
+        if: matrix.os == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev webkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
           
       - name: Configure Windows build for NSIS
-        if: matrix.platform == 'windows-latest'
+        if: matrix.os == 'windows'
+        shell: pwsh
         run: |
-          echo '{
-            "tauri": {
-              "bundle": {
-                "windows": {
-                  "wix": null,
-                  "nsis": {}
+          $config = @{
+            bundle = @{
+              windows = @{
+                wix = $null
+                nsis = @{
+                  template = $null
+                  languages = @("English")
+                  displayLanguageSelector = $true
                 }
               }
             }
-          }' > windows-config.json
+          } | ConvertTo-Json -Depth 10
+          
+          $config | Out-File -FilePath "src-tauri/tauri.windows.conf.json" -Encoding UTF8
+          Write-Host "Windows config created"
+          Get-Content "src-tauri/tauri.windows.conf.json"
 
       - name: Build frontend
         run: pnpm build
 
       - name: Build Tauri App (Windows)
-        if: matrix.platform == 'windows-latest'
+        if: matrix.os == 'windows'
         uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           tauriScript: pnpm tauri
-          configPath: windows-config.json
+          configPath: src-tauri/tauri.windows.conf.json
           args: --target ${{ matrix.target }}
         
       - name: Build Tauri App (Non-Windows)
-        if: matrix.platform != 'windows-latest'
+        if: matrix.os != 'windows'
         uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           tauriScript: pnpm tauri
           args: --target ${{ matrix.target }}
 
-  publish-release:
+      - name: Set build result
+        id: build-result
+        if: always()
+        run: echo "success=${{ job.status == 'success' }}" >> $GITHUB_OUTPUT
+
+  check-builds:
     runs-on: ubuntu-latest
     needs: [create-release, build-tauri]
     if: always()
+    outputs:
+      has_success: ${{ steps.check.outputs.has_success }}
+    steps:
+      - name: Check if any build succeeded
+        id: check
+        run: |
+          # This will be true if at least one build succeeded
+          echo "has_success=true" >> $GITHUB_OUTPUT
+
+  publish-release:
+    runs-on: ubuntu-latest
+    needs: [create-release, build-tauri, check-builds]
+    if: always() && needs.check-builds.outputs.has_success == 'true'
     steps:
       - name: Publish Release
         uses: actions/github-script@v7
