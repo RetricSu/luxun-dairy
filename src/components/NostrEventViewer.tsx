@@ -36,12 +36,12 @@ export function NostrEventViewer({
   return (
     <div className="bg-white dark:bg-[#262624] rounded-md shadow-md border border-[#e6dfd3] dark:border-border-dark overflow-hidden">
       <div className="flex justify-between items-center px-6 py-4 border-b border-[#e6dfd3] dark:border-border-dark bg-[#f9f6f0] dark:bg-[#2a2a28]">
-        <h3 className="m-0 text-[16px] text-[#7c6d58] dark:text-text-secondary-dark">Nostr 事件: {selectedNostrEvent.substring(0, 8)}...</h3>
-        <div className="flex gap-2">
+        <h3 className="m-0 text-[16px] text-[#7c6d58] dark:text-text-secondary-dark truncate pr-4 min-w-0 flex-shrink">Nostr 事件: {selectedNostrEvent.substring(0, 8)}...</h3>
+        <div className="flex gap-2 flex-shrink-0">
           {isOwnEvent ? (
             <>
               <button 
-                className="bg-[#f0ebe2] dark:bg-[#2a2a28] text-[#7c6d58] dark:text-text-secondary-dark text-sm py-1 px-3 border border-[#d9d0c1] dark:border-border-dark rounded hover:bg-[#e6dfd3] dark:hover:bg-[#333331]" 
+                className="bg-[#f0ebe2] dark:bg-[#2a2a28] text-[#7c6d58] dark:text-text-secondary-dark text-sm py-1 px-3 border border-[#d9d0c1] dark:border-border-dark rounded hover:bg-[#e6dfd3] dark:hover:bg-[#333331] whitespace-nowrap" 
                 onClick={handleVerifySignature}
                 disabled={verificationResult.status === 'loading'}
               >
@@ -52,7 +52,7 @@ export function NostrEventViewer({
            <></> 
           )}
           <button 
-            className="bg-[#f0ebe2] dark:bg-[#2a2a28] text-[#7c6d58] dark:text-text-secondary-dark text-sm py-1 px-3 border border-[#d9d0c1] dark:border-border-dark rounded hover:bg-[#e6dfd3] dark:hover:bg-[#333331]" 
+            className="bg-[#f0ebe2] dark:bg-[#2a2a28] text-[#7c6d58] dark:text-text-secondary-dark text-sm py-1 px-3 border border-[#d9d0c1] dark:border-border-dark rounded hover:bg-[#e6dfd3] dark:hover:bg-[#333331] whitespace-nowrap" 
             onClick={closeNostrEventView}
           >
             关闭
@@ -70,28 +70,28 @@ export function NostrEventViewer({
       )}
       {!isOwnEvent && (
         <div className="px-6 py-2 text-sm font-medium bg-[#f9f9d9] dark:bg-[#36362e] text-[#7c7c3a] dark:text-[#d2d28a]">
-          朋友的日记无法验证签名，因为使用了更强调隐私性的 <a href="https://github.com/nostr-protocol/nips/blob/master/59.md" target="_blank" rel="noopener noreferrer">Nip59 GiftWrap 模式分享</a>。
+          朋友的日记无法验证签名，因为使用了更强调隐私性的 <a href="https://github.com/nostr-protocol/nips/blob/master/59.md" target="_blank" rel="noopener noreferrer" className="text-[#49b3a1] dark:text-[#43a595] hover:underline">Nip59 GiftWrap 模式分享</a>。
         </div>
       )}
-      <div className="w-full max-h-[70vh] overflow-y-auto bg-[#f8f9fa] dark:bg-[#2a2a28] p-4 rounded text-sm whitespace-pre-wrap break-words">
+      <div className="w-full max-h-[70vh] overflow-y-auto bg-[#f8f9fa] dark:bg-[#2a2a28] p-4 rounded text-sm">
         {(() => {
           try {
             const event = JSON.parse(nostrEventData);
             return (
               <>
                 <div className="mb-6 pb-4 border-b border-[#e0e0e0] dark:border-border-dark">
-                  <p><strong>类型:</strong> {event.kind === 30027 ? "鲁迅日记格式 (30027)" : event.kind}</p>
-                  <p><strong>创建时间:</strong> {new Date(event.created_at * 1000).toLocaleString('zh-CN')}</p>
-                  <p><strong>公钥:</strong> {shortenKey(event.pubkey)}</p>
-                  <p><strong>签名:</strong> <span className="font-mono text-xs">{shortenKey(event.sig) ? shortenKey(event.sig) : '无'}</span></p>
+                  <p className="mb-2"><strong>类型:</strong> {event.kind === 30027 ? "鲁迅日记格式 (30027)" : event.kind}</p>
+                  <p className="mb-2"><strong>创建时间:</strong> {new Date(event.created_at * 1000).toLocaleString('zh-CN')}</p>
+                  <p className="mb-2 break-all"><strong>公钥:</strong> <span className="font-mono text-xs">{event.pubkey}</span></p>
+                  <p className="mb-2 break-all"><strong>签名:</strong> <span className="font-mono text-xs">{event.sig || '无'}</span></p>
                 </div>
                 
                 <div className="mb-6 pb-4 border-b border-[#e0e0e0] dark:border-border-dark">
                   <h4 className="font-medium mb-2">标签:</h4>
                   <ul className="list-none pl-2">
                     {event.tags.map((tag: any, index: number) => (
-                      <li key={index} className="py-1">
-                        <strong>{tag[0]}:</strong> {tag[1]}
+                      <li key={index} className="py-1 break-words">
+                        <strong>{tag[0]}:</strong> <span className="ml-1">{tag[1]}</span>
                       </li>
                     ))}
                   </ul>
@@ -99,17 +99,17 @@ export function NostrEventViewer({
                 
                 <div className="mb-6 pb-4 border-b border-[#e0e0e0] dark:border-border-dark">
                   <h4 className="font-medium mb-2">内容:</h4>
-                  <pre className="bg-white dark:bg-[#262624] p-4 rounded border border-[#e0e0e0] dark:border-border-dark">{event.content}</pre>
+                  <pre className="bg-white dark:bg-[#262624] p-4 rounded border border-[#e0e0e0] dark:border-border-dark whitespace-pre-wrap break-words overflow-x-auto">{event.content}</pre>
                 </div>
                 
                 <details className="cursor-pointer">
-                  <summary className="font-bold mb-2 text-[#555] dark:text-text-secondary-dark">原始 JSON</summary>
-                  <pre className="bg-[#f0f0f0] dark:bg-[#262624] p-3 rounded text-xs">{JSON.stringify(event, null, 2)}</pre>
+                  <summary className="font-bold mb-2 text-[#555] dark:text-text-secondary-dark hover:text-[#333] dark:hover:text-white transition-colors">原始 JSON</summary>
+                  <pre className="bg-[#f0f0f0] dark:bg-[#262624] p-3 rounded text-xs overflow-x-auto break-all">{JSON.stringify(event, null, 2)}</pre>
                 </details>
               </>
             );
           } catch (e) {
-            return <pre>{nostrEventData}</pre>;
+            return <pre className="whitespace-pre-wrap break-words overflow-x-auto">{nostrEventData}</pre>;
           }
         })()}
       </div>

@@ -140,7 +140,7 @@ export function GiftWrapShare({ entry, onClose, isOpen }: GiftWrapShareProps) {
               <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <h3 className="font-semibold text-lg mb-2 text-gray-800">{entry.day}</h3>
                 <p className="text-sm text-gray-600 mb-2">天气: {entry.weather}</p>
-                <p className="whitespace-pre-wrap mt-2 text-gray-700">{entry.content.substring(0, 100)}...</p>
+                <p className="whitespace-pre-wrap mt-2 text-gray-700 break-words">{entry.content.substring(0, 100)}...</p>
               </div>
             </div>
 
@@ -153,7 +153,7 @@ export function GiftWrapShare({ entry, onClose, isOpen }: GiftWrapShareProps) {
                 value={recipientPubkey}
                 onChange={(e: JSX.TargetedEvent<HTMLInputElement, Event>) => setRecipientPubkey(e.currentTarget.value)}
                 disabled={isWrapping || !!giftWrapData}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 break-all"
                 placeholder="输入接收者的 Nostr 公钥（十六进制格式）"
               />
             </div>
@@ -219,7 +219,7 @@ export function GiftWrapShare({ entry, onClose, isOpen }: GiftWrapShareProps) {
               <div className="mt-6 space-y-4">
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <p className="text-sm font-medium text-gray-700 mb-2">加密分享ID：</p>
-                  <p className="text-xs break-all">{giftWrapData.id}</p>
+                  <p className="text-xs break-all font-mono">{giftWrapData.id}</p>
                 </div>
                 
                 <details className="bg-gray-50 rounded-lg border border-gray-200">
@@ -227,7 +227,7 @@ export function GiftWrapShare({ entry, onClose, isOpen }: GiftWrapShareProps) {
                     显示原始加密分享数据
                   </summary>
                   <div className="p-3 bg-white rounded-b-lg">
-                    <pre className="text-xs overflow-x-auto max-h-60 overflow-y-auto">
+                    <pre className="text-xs overflow-x-auto max-h-60 overflow-y-auto whitespace-pre-wrap break-words">
                       {JSON.stringify(JSON.parse(giftWrapData.event), null, 2)}
                     </pre>
                   </div>
