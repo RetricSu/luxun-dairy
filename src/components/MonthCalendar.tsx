@@ -154,7 +154,7 @@ export function MonthCalendar({ entries }: MonthCalendarProps) {
       return;
     }
     
-    // If no entry, check if it's a past date or today/future
+    // If no entry, check if it's a past date, today, or future
     const clickedDate = new Date(day);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -163,9 +163,12 @@ export function MonthCalendar({ entries }: MonthCalendarProps) {
     if (clickedDate < today) {
       // Past date without entry - navigate with date parameter like in settings
       navigate(`/?date=${day}`);
-    } else {
-      // Today or future date - navigate with day parameter for writing
+    } else if (clickedDate.getTime() === today.getTime()) {
+      // Today - navigate with day parameter for writing
       navigate(`/?day=${day}`);
+    } else {
+      // Future date - do nothing
+      return;
     }
   };
   
