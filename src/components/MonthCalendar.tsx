@@ -154,8 +154,22 @@ export function MonthCalendar({ entries }: MonthCalendarProps) {
       return;
     }
     
-    // If no entry, navigate to write page for that day
-    navigate(`/?day=${day}`);
+    // If no entry, check if it's a past date, today, or future
+    const clickedDate = new Date(day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    clickedDate.setHours(0, 0, 0, 0);
+    
+    if (clickedDate < today) {
+      // Past date without entry - navigate with date parameter like in settings
+      navigate(`/?date=${day}`);
+    } else if (clickedDate.getTime() === today.getTime()) {
+      // Today - navigate with day parameter for writing
+      navigate(`/?day=${day}`);
+    } else {
+      // Future date - do nothing
+      return;
+    }
   };
   
   // Handle mouse enter on a day cell
