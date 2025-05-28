@@ -18,15 +18,15 @@ importers:
         specifier: ^2
         version: 2.2.7
       preact:
-        specifier: ^10.26.6
-        version: 10.26.6
+        specifier: ^10.26.7
+        version: 10.26.7
       react-router-dom:
         specifier: ^7.6.1
         version: 7.6.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
     devDependencies:
       '@preact/preset-vite':
         specifier: ^2.9.3
-        version: 2.10.1(@babel/core@7.26.10)(magic-string@0.30.17)(preact@10.26.6)(vite@6.3.5(jiti@2.4.2)(lightningcss@1.30.1))
+        version: 2.10.1(@babel/core@7.26.10)(magic-string@0.30.17)(preact@10.26.7)(vite@6.3.5(jiti@2.4.2)(lightningcss@1.30.1))
       '@tauri-apps/cli':
         specifier: ^2
         version: 2.5.0
@@ -873,8 +873,8 @@ packages:
     resolution: {integrity: sha512-dle9A3yYxlBSrt8Fu+IpjGT8SY8hN0mlaA6GY8t0P5PjIOZemULz/E2Bnm/2dcUOena75OTNkHI76uZBNUUq3A==}
     engines: {node: ^10 || ^12 || >=14}
 
-  preact@10.26.6:
-    resolution: {integrity: sha512-5SRRBinwpwkaD+OqlBDeITlRgvd8I8QlxHJw9AxSdMNV6O+LodN9nUyYGpSF7sadHjs6RzeFShMexC6DbtWr9g==}
+  preact@10.26.7:
+    resolution: {integrity: sha512-43xS+QYc1X1IPbw03faSgY6I6OYWcLrJRv3hU0+qMOfh/XCHcP0MX2CVjNARYR2cC/guu975sta4OcjlczxD7g==}
 
   react-dom@19.1.0:
     resolution: {integrity: sha512-Xs1hdnE+DyKgeHJeJznQmYMIBG3TKIHJJT95Q58nHLSrElKlGQqDTR2HQ9fx5CN/Gk6Vh/kupBTDLU11/nDk/g==}
@@ -1241,12 +1241,12 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
 
-  '@preact/preset-vite@2.10.1(@babel/core@7.26.10)(magic-string@0.30.17)(preact@10.26.6)(vite@6.3.5(jiti@2.4.2)(lightningcss@1.30.1))':
+  '@preact/preset-vite@2.10.1(@babel/core@7.26.10)(magic-string@0.30.17)(preact@10.26.7)(vite@6.3.5(jiti@2.4.2)(lightningcss@1.30.1))':
     dependencies:
       '@babel/core': 7.26.10
       '@babel/plugin-transform-react-jsx': 7.25.9(@babel/core@7.26.10)
       '@babel/plugin-transform-react-jsx-development': 7.25.9(@babel/core@7.26.10)
-      '@prefresh/vite': 2.4.7(preact@10.26.6)(vite@6.3.5(jiti@2.4.2)(lightningcss@1.30.1))
+      '@prefresh/vite': 2.4.7(preact@10.26.7)(vite@6.3.5(jiti@2.4.2)(lightningcss@1.30.1))
       '@rollup/pluginutils': 4.2.1
       babel-plugin-transform-hook-names: 1.0.2(@babel/core@7.26.10)
       debug: 4.4.0
@@ -1260,20 +1260,20 @@ snapshots:
 
   '@prefresh/babel-plugin@0.5.1': {}
 
-  '@prefresh/core@1.5.3(preact@10.26.6)':
+  '@prefresh/core@1.5.3(preact@10.26.7)':
     dependencies:
-      preact: 10.26.6
+      preact: 10.26.7
 
   '@prefresh/utils@1.2.0': {}
 
-  '@prefresh/vite@2.4.7(preact@10.26.6)(vite@6.3.5(jiti@2.4.2)(lightningcss@1.30.1))':
+  '@prefresh/vite@2.4.7(preact@10.26.7)(vite@6.3.5(jiti@2.4.2)(lightningcss@1.30.1))':
     dependencies:
       '@babel/core': 7.26.10
       '@prefresh/babel-plugin': 0.5.1
-      '@prefresh/core': 1.5.3(preact@10.26.6)
+      '@prefresh/core': 1.5.3(preact@10.26.7)
       '@prefresh/utils': 1.2.0
       '@rollup/pluginutils': 4.2.1
-      preact: 10.26.6
+      preact: 10.26.7
       vite: 6.3.5(jiti@2.4.2)(lightningcss@1.30.1)
     transitivePeerDependencies:
       - supports-color
@@ -1694,7 +1694,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  preact@10.26.6: {}
+  preact@10.26.7: {}
 
   react-dom@19.1.0(react@19.1.0):
     dependencies:
