@@ -14,7 +14,7 @@
     "@tauri-apps/api": "^2.5.0",
     "@tauri-apps/plugin-opener": "^2",
     "preact": "^10.26.6",
-    "react-router-dom": "^7.6.0"
+    "react-router-dom": "^7.6.1"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.9.3",
