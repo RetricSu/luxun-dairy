@@ -16,7 +16,7 @@ jobs:
     outputs:
       release_id: ${{ steps.cr.outputs.id }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - id: cr
         uses: actions/github-script@v7
@@ -60,7 +60,7 @@ jobs:
             allow_failure: true     # 仅 Windows 允许失败
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: pnpm/action-setup@v4
         with:
